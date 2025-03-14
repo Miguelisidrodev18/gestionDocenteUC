@@ -13,6 +13,16 @@ return new class extends Migration
     {
         Schema::create('docentes', function (Blueprint $table) {
             $table->id();
+            $table->string('nombre');
+            $table->string('apellido');
+            $table->string('dni')->unique();
+            $table->string('email')->unique();
+            $table->string('telefono')->nullable();
+            $table->string('especialidad');
+            $table->string('cv_sunedu')->nullable();
+            $table->string('cv_personal')->nullable();
+            $table->string('linkedin')->nullable();
+            $table->enum('estado', ['activo', 'inactivo'])->default('activo');
             $table->timestamps();
         });
     }
