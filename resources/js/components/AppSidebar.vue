@@ -7,6 +7,12 @@ import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { User } from 'lucide-vue-next';
+import { LibraryBig } from 'lucide-vue-next';
+import { CalendarClock } from 'lucide-vue-next';
+import { History } from 'lucide-vue-next';
+import { FolderOpenDot } from 'lucide-vue-next';
+
 
 const mainNavItems: NavItem[] = [
     {
@@ -14,6 +20,32 @@ const mainNavItems: NavItem[] = [
         href: '/dashboard',
         icon: LayoutGrid,
     },
+    {
+        title: 'Docentes',
+        href: '/docentes',
+        icon: User,
+    },
+    {
+        title: 'Cursos',
+        href: '/cursos',
+        icon: LibraryBig,
+    },
+    {
+        title: 'Horarios',
+        href: '/horarios',
+        icon: CalendarClock,
+    },
+    {
+        title: 'Actulizaciones',
+        href: '/actualizaciones',
+        icon: History,
+    },
+    {
+        title: 'Materiales',
+        href: '/materiales',
+        icon: FolderOpenDot,
+    },
+
 ];
 
 const footerNavItems: NavItem[] = [
