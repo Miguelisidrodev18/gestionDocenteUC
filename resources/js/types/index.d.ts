@@ -36,3 +36,11 @@ export interface User {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+export interface Docente {
+    id: number;
+    nombre: string;
+    apellido: string;
+    position: string ;
+    
+}
