@@ -41,6 +41,23 @@ export interface Docente {
     id: number;
     nombre: string;
     apellido: string;
-    position: string ;
-    
+    dni: string ;
+    email: string ;
+    telefono: string | null;
+    especialidad: string;
+    cv_sunedu: string | null;
+    cv_personal: string | null;
+    linkedin: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Cursos {
+    id: number;
+    nombre:string;
+    codigo: string;
+    descripcion: string;
+    creditos: number;
+    nivel: string;
+
 }
