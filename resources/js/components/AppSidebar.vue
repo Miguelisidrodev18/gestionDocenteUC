@@ -36,7 +36,7 @@ const mainNavItems: NavItem[] = [
         icon: CalendarClock,
     },
     {
-        title: 'Actulizaciones',
+        title: 'Actualizaciones',
         href: '/actualizaciones',
         icon: History,
     },

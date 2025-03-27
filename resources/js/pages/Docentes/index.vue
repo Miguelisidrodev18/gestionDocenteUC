@@ -13,10 +13,10 @@ interface DocentePageProps extends SharedData{
     breadcrumbs: BreadcrumbItem[];
     shared: SharedData;
 }
-/*
+
 const props = usePage<DocentePageProps>();
 const docentes = computed(() => props.docentes);
-*/
+
 //breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [{title:"Docentes", href:'/docentes'}]
 //método para eliminar
