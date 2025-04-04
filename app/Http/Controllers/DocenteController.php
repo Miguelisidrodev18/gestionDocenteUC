@@ -14,7 +14,7 @@ class DocenteController extends Controller
     public function index()
     {
         return Inertia::render('Docentes/index', [
-            'docentes'-> Docente::all(),
+            'docents'=> Docente::all(),
         ]);
     }
 

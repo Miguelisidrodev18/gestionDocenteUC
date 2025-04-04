@@ -13,14 +13,14 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/docentes',[DocenteController::class,'index'])->name('docentes.index');
-    Route::get('/docentes/create',[DocenteController::class,'create'])->name('docentes.create');
-    Route::post('/docentes',[DocenteController::class,'store'])->name('docentes.store');
-    Route::get('/docentes/{docente}/edit',[DocenteController::class,'edit'])->name('docentes.edit');
-    Route::put('/docentes/{docente}',[DocenteController::class,'update'])->name('docentes.update');
-    Route::delete('/docentes/{docente}',[DocenteController::class,'destroy'])->name('docentes.destroy');
+    Route::get('/docents',[DocenteController::class,'index'])->name('teachers.index');
+    Route::get('/docents/create',[DocenteController::class,'create'])->name('teachers.create');
+    Route::post('/docents',[DocenteController::class,'store'])->name('teachers.store');
+    Route::get('/docents/{docent}/edit',[DocenteController::class,'edit'])->name('teachers.edit');
+    Route::put('/docents/{docent}',[DocenteController::class,'update'])->name('teachers.update');
+    Route::delete('/docents/{docent}',[DocenteController::class,'destroy'])->name('teachers.destroy');
 });
-
+/*
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cursos',[CursoController::class,'index'])->name('cursos.index');
     Route::get('/cursos/create',[CursoController::class,'create'])->name('cursos.create');
@@ -54,5 +54,6 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::put('/materiales/{material}',[MaterialController::class,'update'])->name('materiales.update');
     Route::delete('/materiales/{material}',[MaterialController::class,'destroy'])->name('materiales.destroy'); 
 });
+*/
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
