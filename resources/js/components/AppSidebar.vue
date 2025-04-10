@@ -22,7 +22,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Docentes',
-        href: '/docentes',
+        href: '/docents',
         icon: User,
     },
     {

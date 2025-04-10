@@ -22,12 +22,12 @@ const breadcrumbs: BreadcrumbItem[] = [{title:"Docentes", href:'/docents'}]
 </script>
 
 <template>  
-    <head title="Docentes" />
+    <head title="Docents" />
     <AppLayout> 
         <div class="flex h-full flex-1 flex-col  gap-4 rounded-xl p-4">
             <div class="flex">
                 <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700" >
-                    <Link href="/docentes/create" class="flex items-center">
+                    <Link href="/docents/create" class="flex items-center">
                         <CirclePlus class="w-6 h-6 mr-2" />
                         Nuevo Docente
                     </Link>
