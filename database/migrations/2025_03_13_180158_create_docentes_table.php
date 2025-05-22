@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('cv_personal')->nullable();
             $table->string('linkedin')->nullable();
             $table->enum('estado', ['activo', 'inactivo'])->default('activo');
+            $table->string('cip')->nullable();
             $table->timestamps();
         });
     }
@@ -32,6 +33,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('docentes');
+       Schema::table('docentes', function (Blueprint $table) {
+        $table->dropColumn(['cv_personal', 'cv_sunedu']);
+    });
     }
 };

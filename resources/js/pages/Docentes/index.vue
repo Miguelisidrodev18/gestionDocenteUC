@@ -1,4 +1,3 @@
-
 <script setup lang="ts">            
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, usePage, Link, router } from '@inertiajs/vue3';
@@ -6,7 +5,7 @@ import {Docente, type BreadcrumbItem, type SharedData } from '@/types';
 import { Table,TableBody, TableCaption , TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 // Iconos
-import { Pencil, Trash, CirclePlus } from 'lucide-vue-next';
+import { CirclePlus, Pencil, Trash } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 interface DocentPageProps extends SharedData{
@@ -19,61 +18,99 @@ const docents= computed(()=> props.props.docents);
 const breadcrumbs: BreadcrumbItem[] = [{title:"Docentes", href:'/docents'}]
 //método para eliminar
 
+const deleteDocente = (id: number) => {
+    if (confirm('¿Estás seguro de que deseas eliminar este docente?')) {
+        router.delete(`/docents/${id}`, {
+            onSuccess: () => {
+                // Aquí puedes manejar la respuesta después de eliminar el docente
+                console.log('Docente eliminado con éxito');
+                router.visit('/docents', {replace: true}); // Redirigir a la lista de docentes después de eliminar
+            },
+            onError: () => {
+                // Aquí puedes manejar el error si la eliminación falla
+                console.error('Error al eliminar el docente');
+            },
+        });
+    }
+};
 </script>
 
 <template>  
-    <head title="Docents" />
-    <AppLayout> 
-        <div class="flex h-full flex-1 flex-col  gap-4 rounded-xl p-4">
-            <div class="flex">
-                <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700" >
-                    <Link href="/docents/create"><CirclePlus/> Create</link>
-                    </Link>
-                </button>
-            </div>
-        </div>
-        
-        <div class="relative min-h-screen flex-1 overflow-hidden rounded-xl border bg-background p-4 shadow-sm">
-            <Table class="w-f ull h-full overflow-hidden rounded-xl border bg-background p-4 shadow-sm">
-                <TableHeader>
-                    <TableRow>
-                        <TableHead class="w-[100px]">ID</TableHead>
-                        <TableHead class="text-center">Nombre</TableHead>
-                        <TableHead class="text-center">Apellido</TableHead>
-                        <TableHead class="text-center">DNI</TableHead>
-                        <TableHead class="text-center">Email</TableHead>
-                        <TableHead class="text-center">Telefono</TableHead>
-                        <TableHead class="text-center">Especialidad</TableHead>
-                        <TableHead class="text-center">cv_sunedu</TableHead>
-                        <TableHead class="text-center">cv_personal</TableHead>
-                        <TableHead class="text-center">Linkedln</TableHead>
-                        <TableHead class="text-center">Acciones</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                        <TableRow v-for="(docent, index) in docents" :key="index" class="hover:bg-gray-100 cursor-pointer">
-                            <TableCell class="font-medium">{{ docent.id }}</TableCell>
-                            <TableCell>{{ docent.id }}</TableCell>
-                            <TableCell>{{ docent.nombre }}</TableCell>
-                            <TableCell>{{ docent.apellido }}</TableCell>
-                            <TableCell>{{ docent.dni }}</TableCell>
-                            <TableCell>{{ docent.email ?? 'N/A'}}</TableCell>
-                            <TableCell>{{ docent.telefono }}</TableCell>
-                            <TableCell>{{ docent.especialidad }}</TableCell>
-                            <TableCell>{{ docent.cv_sunedu }}</TableCell>
-                            <TableCell>{{ docent.cv_personal }}</TableCell>
-                            <TableCell>{{ docent.linkedin }}</TableCell>
-                            <TableCell class="flex gap-2">
-                                <Link :href="'/docents/' + docent.id + '/show'"><Pencil class="w-6 h-6 text-blue-500"/></Link>
-                                <Link :href="'/docents/' + docent.id + '/edit'"><Pencil class="w-6 h-6 text-blue-500"/></Link>
-                                <Link :href="'/docents/' + docent.id + '/delete'"><Trash class="w-6 h-6 text-red-500"/></Link>
-                            </TableCell>
+  <head title="Docentes"/>
+  <AppLayout :breadcrumbs="breadcrumbs"> 
+    <div v-if="$page.props.flash && $page.props.flash.success" class="bg-green-100 text-green-800 p-2 rounded mb-4">
+      {{ $page.props.flash.success }}
+    </div>
+    <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">
+      <div class="flex">
+        <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700">
+          <Link href="/docents/create">
+            <CirclePlus /> Create
+          </Link>
+        </button>
+      </div>
+    </div> 
 
-                            
-                        </TableRow>
-                    
-                </TableBody> 
-            </Table>
-        </div>
-    </AppLayout>
+    <div class="relative min-h-screen flex-1 overflow-hidden rounded-xl border bg-background p-4 shadow-sm">
+      <Table>
+        <TableCaption>Lista de Docentes</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-[100px]">ID</TableHead>
+            <TableHead class="text-center">Nombre</TableHead>
+            <TableHead class="text-center">Apellido</TableHead>
+            <TableHead class="text-center">DNI</TableHead>
+            <TableHead class="text-center">Email</TableHead>
+            <TableHead class="text-center">Teléfono</TableHead>
+            <TableHead class="text-center">Especialidad</TableHead>
+            <TableHead class="text-center">CV Sunedu</TableHead>
+            <TableHead class="text-center">CV Personal</TableHead>
+            <TableHead class="text-center">LinkedIn</TableHead>
+            <TableHead class="text-center">Estado</TableHead>
+            <TableHead class="text-center">CIP</TableHead>
+            <TableHead class="text-center">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="(docent, index) in docents" :key="index" class="hover:bg-gray-100 cursor-pointer">
+            <TableCell class="font-medium">{{ docent.id }}</TableCell>
+            <TableCell>{{ docent.nombre }}</TableCell>
+            <TableCell>{{ docent.apellido }}</TableCell>
+            <TableCell>{{ docent.dni }}</TableCell>
+            <TableCell>{{ docent.email ?? 'N/A' }}</TableCell>
+            <TableCell>{{ docent.telefono }}</TableCell>
+            <TableCell>{{ docent.especialidad }}</TableCell>
+            <TableCell>
+                @if ($docent->cv_personal)
+                <a href="{{ asset('storage/' . $docent->cv_personal) }}" target="_blank">Ver CV Personal</a>
+                @endif
+            </TableCell>
+            <TableCell>
+                @if ($docent->cv_sunedu)
+                <a href="{{ asset('storage/' . $docent->cv_sunedu) }}" target="_blank">Ver CV Sunedu</a>
+                @endif
+            </TableCell>
+            <TableCell>{{ docent.linkedin }}</TableCell>
+            <TableCell>{{ docent.estado }}</TableCell>
+            <TableCell>{{ docent.cip }}</TableCell>
+            <TableCell class="flex justify-center gap-2">
+                <TableCell class="flex justify-center gap-2">
+                <!-- Botón para Editar -->
+                    <button as-child size="sa" class="bg-blue-500 text-white hover:bg-blue-700">
+                        <Link :href="'/docents/' + docent.id + '/edit'">
+                          <Pencil />
+                      </Link>
+                      </button>
+                <!-- Botón para Eliminar -->
+                    <button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
+                        <Trash />
+                    </button>
+        </TableCell>>
+            </TableCell>
+          </TableRow>
+        </TableBody> 
+      </Table>
+    </div>
+  </AppLayout>
 </template>
+<!-- No extra code needed here. You can safely remove $SELECTION_PLACEHOLDER$ or leave it empty. -->

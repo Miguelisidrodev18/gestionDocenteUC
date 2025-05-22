@@ -23,7 +23,8 @@ class DocenteController extends Controller
      */
     public function create()
     {
-        //
+        return Inertia::render('Docentes/create',);
+
     }
 
     /**
@@ -31,12 +32,25 @@ class DocenteController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'dni' => 'required|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'telefono' => 'nullable|string|max:20',
+            'especialidad' => 'nullable|string|max:255',
+            'cv_personal' => 'nullable|string|max:255',
+            'cv_sunedu' => 'nullable|string|max:255',
+            'linkedin' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:50',
+            'cip' => 'nullable|string|max:50',
+        ]);
+
+        \App\Models\Docente::create($validated);
+
+        return redirect()->route('teachers.index')->with('success', 'Docente creado correctamente');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
@@ -50,19 +64,15 @@ class DocenteController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+   
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+    public function destroy($id) 
+    {       
+        $docente = Docente::findOrFail($id); 
+        $docente->delete(); 
+        return redirect()->route('teachers.index')->with('success', 'Docente eliminado correctamente.');
+    } 
 }

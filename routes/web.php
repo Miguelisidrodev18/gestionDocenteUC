@@ -14,7 +14,7 @@ Route::get('dashboard', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/docents',[DocenteController::class,'index'])->name('teachers.index');
-    Route::get('/docents/create',[DocenteController::class,'create'])->name('teachers.create');
+    Route::get('/docents/create',[DocenteController::class,'create'])->name('docents.create');
     Route::post('/docents',[DocenteController::class,'store'])->name('teachers.store');
     Route::get('/docents/{docent}/edit',[DocenteController::class,'edit'])->name('teachers.edit');
     Route::put('/docents/{docent}',[DocenteController::class,'update'])->name('teachers.update');

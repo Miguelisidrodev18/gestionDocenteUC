@@ -45,6 +45,12 @@ const mainNavItems: NavItem[] = [
         href: '/materiales',
         icon: FolderOpenDot,
     },
+  
+    {
+        title: 'Asesores y Jurados',
+        href: '/asesors',
+        icon: BookOpen,
+    },
 
 ];
 

@@ -20,6 +20,7 @@ class Docente extends Model
         'cv_personal',
         'linkedin',
         'estado',
+        'cip',
     ];
 
     /**
