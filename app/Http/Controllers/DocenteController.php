@@ -39,12 +39,20 @@ class DocenteController extends Controller
             'email' => 'nullable|email|max:255',
             'telefono' => 'nullable|string|max:20',
             'especialidad' => 'nullable|string|max:255',
-            'cv_personal' => 'nullable|string|max:255',
-            'cv_sunedu' => 'nullable|string|max:255',
+            'cv_personal' => 'nullable|file|mimes:pdf',
+            'cv_sunedu' => 'nullable|file|mimes:pdf',
             'linkedin' => 'nullable|string|max:255',
-            'estado' => 'nullable|string|max:50',
+            'estado' => 'required|string|in:activo,inactivo',
             'cip' => 'nullable|string|max:50',
         ]);
+
+        // Guardar archivos si existen
+        if ($request->hasFile('cv_personal')) {
+            $validated['cv_personal'] = $request->file('cv_personal')->store('cv', 'public');
+        }
+        if ($request->hasFile('cv_sunedu')) {
+            $validated['cv_sunedu'] = $request->file('cv_sunedu')->store('cv', 'public');
+        }
 
         \App\Models\Docente::create($validated);
 
@@ -59,16 +67,46 @@ class DocenteController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Docente $docent)
     {
-        //
+        return Inertia::render('Docentes/Edit', [
+            'docent' => $docent,
+        ]);
     }
 
-   
-    public function update(Request $request, string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $docente = Docente::findOrFail($id);
+
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'apellido' => 'required|string|max:255',
+            'dni' => 'required|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'telefono' => 'nullable|string|max:20',
+            'especialidad' => 'nullable|string|max:255',
+            'cv_personal' => 'nullable|file|mimes:pdf',
+            'cv_sunedu' => 'nullable|file|mimes:pdf',
+            'linkedin' => 'nullable|string|max:255',
+            'estado' => 'required|string|in:activo,inactivo',
+            'cip' => 'nullable|string|max:50',
+        ]);
+
+        // Manejar archivos
+    if ($request->hasFile('cv_personal')) {
+        $validated['cv_personal'] = $request->file('cv_personal')->store('cv', 'public');
     }
+
+    if ($request->hasFile('cv_sunedu')) {
+        $validated['cv_sunedu'] = $request->file('cv_sunedu')->store('cv', 'public');
+    }
+
+    $docente->update($validated);
+
+    // Redirigir con mensaje de éxito
+    return redirect()->route('teachers.index')->with('success', 'Docente actualizado correctamente');
+}
+
     public function destroy($id) 
     {       
         $docente = Docente::findOrFail($id); 

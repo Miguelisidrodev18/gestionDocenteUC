@@ -38,9 +38,11 @@ const deleteDocente = (id: number) => {
 <template>  
   <head title="Docentes"/>
   <AppLayout :breadcrumbs="breadcrumbs"> 
+    <!-- Mostrar mensaje de éxito -->
     <div v-if="$page.props.flash && $page.props.flash.success" class="bg-green-100 text-green-800 p-2 rounded mb-4">
       {{ $page.props.flash.success }}
     </div>
+
     <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">
       <div class="flex">
         <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700">
@@ -81,31 +83,36 @@ const deleteDocente = (id: number) => {
             <TableCell>{{ docent.telefono }}</TableCell>
             <TableCell>{{ docent.especialidad }}</TableCell>
             <TableCell>
-                @if ($docent->cv_personal)
-                <a href="{{ asset('storage/' . $docent->cv_personal) }}" target="_blank">Ver CV Personal</a>
-                @endif
+              <template v-if="docent.cv_personal">
+                <a :href="`/storage/${docent.cv_personal}`" target="_blank">Ver CV Personal</a>
+              </template>
+              <template v-else>
+                No disponible
+              </template>
             </TableCell>
             <TableCell>
-                @if ($docent->cv_sunedu)
-                <a href="{{ asset('storage/' . $docent->cv_sunedu) }}" target="_blank">Ver CV Sunedu</a>
-                @endif
+              <template v-if="docent.cv_sunedu">
+                <a :href="`/storage/${docent.cv_sunedu}`" target="_blank">Ver CV Sunedu</a>
+              </template>
+              <template v-else>
+                No disponible
+              </template>
             </TableCell>
             <TableCell>{{ docent.linkedin }}</TableCell>
             <TableCell>{{ docent.estado }}</TableCell>
             <TableCell>{{ docent.cip }}</TableCell>
             <TableCell class="flex justify-center gap-2">
-                <TableCell class="flex justify-center gap-2">
                 <!-- Botón para Editar -->
-                    <button as-child size="sa" class="bg-blue-500 text-white hover:bg-blue-700">
-                        <Link :href="'/docents/' + docent.id + '/edit'">
-                          <Pencil />
-                      </Link>
-                      </button>
+                <button as-child size="sa" class="bg-blue-500 text-white hover:bg-blue-700">
+                    <Link :href="'/docents/' + docent.id + '/edit'">
+                        <Pencil />
+                    </Link>
+                </button>
                 <!-- Botón para Eliminar -->
-                    <button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
-                        <Trash />
-                    </button>
-        </TableCell>>
+                <button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
+                    <Trash />
+                </button>
+                
             </TableCell>
           </TableRow>
         </TableBody> 
