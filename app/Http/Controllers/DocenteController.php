@@ -69,6 +69,8 @@ class DocenteController extends Controller
      */
     public function edit(Docente $docent)
     {
+        // Log::info('Docente ID: ' . $docent->id); // Uncomment if you want to log the docente ID
+
         return Inertia::render('Docentes/Edit', [
             'docent' => $docent,
         ]);
