@@ -45,9 +45,9 @@ const deleteDocente = (id: number) => {
 
     <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">
       <div class="flex">
-        <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700">
+        <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700 px-4 py-2 rounded">  
           <Link href="/docents/create">
-            <CirclePlus /> Create
+            <CirclePlus /> Crear Docente
           </Link>
         </button>
       </div>

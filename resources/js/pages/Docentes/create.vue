@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
+import Swal from 'sweetalert2';
 
 type BreadcrumbItem = { title: string; href: string };
 const Breadcrumbs: BreadcrumbItem[] = [
@@ -38,10 +39,17 @@ const form = ref<FormType>({
     cip: '',
 });
 
+const errors = ref<Record<string, string[]>>({}); // Para almacenar los errores de validación
+
 const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'cv_sunedu'>) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
-        form.value[key] = target.files[0];
+        const file = target.files[0];
+        if (file.type !== 'application/pdf') {
+            errors.value[key] = ['El archivo debe ser un PDF.'];
+            return;
+        }
+        form.value[key] = file;
     }
 };
 
@@ -66,14 +74,47 @@ const submit = () => {
     Object.entries(form.value).forEach(([key, value]) => {
         if (value !== null) data.append(key, value as any);
     });
+
+    console.log(form.value); // Verifica que form.value esté inicializado correctamente
+
     router.post('/docents', data, {
         forceFormData: true,
         onSuccess: () => {
-            resetForm();
+            Swal.fire({
+                icon: 'success',
+                title: 'Docente creado',
+                text: 'El docente ha sido creado exitosamente.',
+            }).then(() => {
+                router.visit('/docents'); // Redirigir al inicio de docentes
+            });
         },
-        onError: (errors) => {
-            console.error(errors);
+        onError: (err) => {
+            if (err.response && err.response.status === 422) {
+                errors.value = err.response.data.errors; // Captura los errores de validación
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
+                });
+            }
+            console.error(err);
         },
+    });
+};
+
+const confirmCancel = () => {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Los cambios no guardados se perderán.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cancelar',
+        cancelButtonText: 'No',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.visit('/docents');
+        }
     });
 };
 </script>
@@ -87,26 +128,32 @@ const submit = () => {
                 <div>
                     <label class="font-semibold">Nombre</label>
                     <input v-model="form.nombre" type="text" placeholder="Nombre" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.nombre" class="text-red-500 text-sm">{{ errors.value.nombre[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">Apellido</label>
                     <input v-model="form.apellido" type="text" placeholder="Apellido" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.apellido" class="text-red-500 text-sm">{{ errors.value.apellido[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">DNI</label>
                     <input v-model="form.dni" type="text" placeholder="DNI" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.dni" class="text-red-500 text-sm">{{ errors.value.dni[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">Email</label>
                     <input v-model="form.email" type="email" placeholder="Email" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.email" class="text-red-500 text-sm">{{ errors.value.email[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">Teléfono</label>
                     <input v-model="form.telefono" type="text" placeholder="Teléfono" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.telefono" class="text-red-500 text-sm">{{ errors.value.telefono[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">Especialidad</label>
                     <input v-model="form.especialidad" type="text" placeholder="Especialidad" class="w-full rounded-md border border-gray-300 p-2" />
+                    <p v-if="errors.value.especialidad" class="text-red-500 text-sm">{{ errors.value.especialidad[0] }}</p>
                 </div>
                 <div>
                     <label class="font-semibold">CV Personal (PDF)</label>
@@ -135,7 +182,11 @@ const submit = () => {
                     <Button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
                         Crear Docente
                     </Button>
-                    <Link href="/docentes" class="text-gray-500 hover:text-gray-700">
+                    <Link
+                        href="/docents"
+                        class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
+                        @click.prevent="confirmCancel"
+                    >
                         Cancelar
                     </Link>
                 </div>
