@@ -60,6 +60,7 @@ const submit = () => {
 
     console.log([...data.entries()]); // Verifica los datos que se están enviando
 
+
     router.put(`/docents/${props.docent.id}`, data, {
         forceFormData: true,
         onSuccess: () => {

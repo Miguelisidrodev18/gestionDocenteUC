@@ -133,7 +133,7 @@ const confirmCancel = () => {
                     <div>
                         <label class="font-semibold">Apellido</label>
                         <input v-model="form.apellido" type="text" placeholder="Apellido" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.value.apellido[0] }}</p>
+                        <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido[0] }}</p>
                     </div>
                     <div>
                         <label class="font-semibold">DNI</label>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocenteController;
+use App\Http\Controllers\CursoController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -20,7 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/docents/{docent}',[DocenteController::class,'update'])->name('teachers.update');
     Route::delete('/docents/{docent}',[DocenteController::class,'destroy'])->name('teachers.destroy');
 });
-/*
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cursos',[CursoController::class,'index'])->name('cursos.index');
     Route::get('/cursos/create',[CursoController::class,'create'])->name('cursos.create');
@@ -29,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/cursos/{curso}',[CursoController::class,'update'])->name('cursos.update');
     Route::delete('/cursos/{curso}',[CursoController::class,'destroy'])->name('cursos.destroy');
 });
+/*
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/horarios',[HorarioController::class,'index'])->name('horarios.index');
     Route::get('/horarios/create',[HorarioController::class,'create'])->name('horarios.create');
