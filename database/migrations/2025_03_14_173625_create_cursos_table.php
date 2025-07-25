@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('cursos', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
+            $table->string('nombre',150);
             $table->string('codigo')->unique();
             $table->text('descripcion')->nullable();
             $table->integer('creditos');
             $table->enum('nivel',['pregrado','postgrado']);
+            $table->string('modalidad')->default('presencial');
+            $table->string('image_url')->nullable();
             $table->foreignId('docente_id')->constrained('docentes');
+            $table->foreignId('user_id')->constrained('users'); // Agrega esta línea
             $table->timestamps();
         });
     }

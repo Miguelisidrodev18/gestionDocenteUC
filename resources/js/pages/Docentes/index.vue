@@ -75,7 +75,7 @@ const deleteDocente = (id: number) => {
         </TableHeader>
         <TableBody>
           <TableRow v-for="(docent, index) in docents" :key="index" class="hover:bg-gray-100 cursor-pointer">
-            <TableCell class="font-medium">{{ docent.id }}</TableCell>
+            <TableCell class="font-medium">{{ index + 1 }}</TableCell>
             <TableCell>{{ docent.nombre }}</TableCell>
             <TableCell>{{ docent.apellido }}</TableCell>
             <TableCell>{{ docent.dni }}</TableCell>
@@ -99,7 +99,7 @@ const deleteDocente = (id: number) => {
               </template>
             </TableCell>
             <TableCell>{{ docent.linkedin }}</TableCell>
-            <TableCell>{{ docent.estado }}</TableCell>
+            <TableCell>{{ docent.activo !== undefined ? (docent.activo ? 'Activo' : 'Inactivo') : 'N/A' }}</TableCell>
             <TableCell>{{ docent.cip }}</TableCell>
             <TableCell class="flex justify-center gap-2">
                 <!-- Botón para Editar -->

@@ -50,7 +50,7 @@ const handleFileChange = (e: Event, key: string) => {
     }
 };
 
-const errors = ref({});
+const errors = ref<Record<string, string[]>>({});
 
 const submit = () => {
     const data = new FormData();
@@ -67,7 +67,9 @@ const submit = () => {
             router.visit('/docents', { replace: true }); // Redirigir a la lista de docentes
         },
         onError: (err) => {
-            errors.value = err; // Captura los errores de validación
+            errors.value = Object.fromEntries(
+                Object.entries(err).map(([key, value]) => [key, Array.isArray(value) ? value : [String(value)]])
+            ); // Captura los errores de validación
             console.error(err);
         },
     });
@@ -85,17 +87,17 @@ console.log(props.docent);
                 <div>
                     <label>Nombre</label>
                     <input v-model="form.nombre" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.value.nombre" class="text-red-500 text-sm">{{ errors.value.nombre }}</p>
+                    <p v-if="errors.nombre" class="text-red-500 text-sm">{{ errors.nombre?.[0] }}</p>
                 </div>
                 <div>
                     <label>Apellido</label>
                     <input v-model="form.apellido" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.value.apellido" class="text-red-500 text-sm">{{ errors.value.apellido }}</p>
+                    <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido?.[0] }}</p>
                 </div>
                 <div>
                     <label>DNI</label>
                     <input v-model="form.dni" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.value.dni" class="text-red-500 text-sm">{{ errors.value.dni }}</p>
+                    <p v-if="errors.dni" class="text-red-500 text-sm">{{ errors.dni?.[0] }}</p>
                 </div>
                 <div>
                     <label>Email</label>

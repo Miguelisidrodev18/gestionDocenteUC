@@ -12,5 +12,20 @@ class Curso extends Model
         'descripcion',
         'creditos',
         'nivel',
+        'modalidad',
+        'image_url',
+        'docente_id',
+        'user_id',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+    
+    public function docente()
+    {
+        return $this->belongsTo(\App\Models\Docente::class);
+    }
 };
+0

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\CursoController;
+use App\Http\Controllers\HorarioController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -30,7 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/cursos/{curso}',[CursoController::class,'update'])->name('cursos.update');
     Route::delete('/cursos/{curso}',[CursoController::class,'destroy'])->name('cursos.destroy');
 });
-/*
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/horarios',[HorarioController::class,'index'])->name('horarios.index');
     Route::get('/horarios/create',[HorarioController::class,'create'])->name('horarios.create');
@@ -39,7 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/horarios/{horario}',[HorarioController::class,'update'])->name('horarios.update');
     Route::delete('/horarios/{horario}',[HorarioController::class,'destroy'])->name('horarios.destroy');
 });
-
+/*
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/actualizaciones',[ActualizacionController::class,'index'])->name('actualizaciones.index');
     Route::get('/actualizaciones/create',[ActualizacionController::class,'create'])->name('actualizaciones.create');
