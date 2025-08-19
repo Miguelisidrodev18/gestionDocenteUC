@@ -17,11 +17,15 @@ const nuevoCurso = ref({
   modalidad: 'presencial',
   image_url: '',
   docente_id: '',
+  drive_url: '',
 });
+const periodoSeleccionado = ref(usePage().props.periodo ?? '2025-2'); // Obtén el período desde el backend o usa un valor por defecto
 
 function agregarCurso() {
+  nuevoCurso.value.periodo = periodoSeleccionado.value; // Asigna el período seleccionado al nuevo curso
   router.post('/cursos', nuevoCurso.value, {
     onSuccess: () => {
+      alert('Curso creado correctamente.');
       mostrarFormulario.value = false;
       nuevoCurso.value = {
         nombre: '',
@@ -30,11 +34,25 @@ function agregarCurso() {
         creditos: '',
         nivel: 'pregrado',
         modalidad: 'presencial',
-        image_url: '',
         docente_id: '',
+        drive_url: '',
+        periodo: periodoSeleccionado.value, // Reinicia el período con el valor seleccionado
       };
-    }
+      router.reload(); // Recarga la página para reflejar los cambios
+    },
+    onError: (errors) => {
+      console.error(errors); // Muestra los errores en la consola
+      alert('Hubo un error al guardar el curso.');
+    },
   });
+}
+
+function abrirGoogleDrive(driveUrl) {
+  if (driveUrl) {
+    window.open(driveUrl, '_blank');
+  } else {
+    alert('Este curso no tiene un enlace de Google Drive.');
+  }
 }
 
 function editarCurso(id) {
@@ -45,17 +63,38 @@ function eliminarCurso(id) {
   if (confirm('¿Estás seguro de que deseas eliminar este curso?')) {
     router.delete(`/cursos/${id}`, {
       onSuccess: () => {
-        // Aquí puedes agregar lógica adicional después de eliminar el curso, si es necesario
+        alert('Curso eliminado correctamente.');
+        router.reload(); // Recarga la página para reflejar los cambios
       }
     });
   }
+}
+
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  nuevoCurso.value.image = file; // Agrega el archivo al objeto nuevoCurso
+}
+
+function cambiarPeriodo() {
+  nuevoCurso.value.periodo = periodoSeleccionado.value; // Actualiza el período en el nuevo curso
+  router.get('/cursos', { periodo: periodoSeleccionado.value }); // Redirige con el período seleccionado
 }
 </script>
 
 <template>
   <AppLayout>
     <div class="p-8 bg-gray-100 min-h-screen">
-      <h1 class="text-3xl font-bold mb-8 text-center">Asignaturas <button color="red"> <strong>"2025-10"</strong></button></h1>
+      <h1 class="text-3xl font-bold mb-8 text-center">Asignaturas "{{ periodoSeleccionado }}"</h1>
+      <!-- Selector de período -->
+      <select
+        v-model="periodoSeleccionado"
+        @change="cambiarPeriodo"
+        class="border p-2 rounded mb-4"
+      >
+        <option value="2025-2">2025-2</option>
+        <option value="2026-0">2026-0</option>
+        <option value="2026-1">2026-1</option>
+      </select>
       <!-- Botón para mostrar el formulario -->
       <div class="flex justify-end mb-4">
         <button
@@ -80,7 +119,6 @@ function eliminarCurso(id) {
           <option value="postgrado">Postgrado</option>
         </select>
         <input v-model="nuevoCurso.modalidad" placeholder="Modalidad" class="border p-2 rounded" required />
-        <input v-model="nuevoCurso.image_url" placeholder="URL de imagen (opcional)" class="border p-2 rounded" />
         <!-- Selección de docente -->
         <select v-model="nuevoCurso.docente_id" class="border p-2 rounded" required>
           <option value="">Seleccione un docente</option>
@@ -88,6 +126,8 @@ function eliminarCurso(id) {
             {{ docente.nombre }} {{ docente.apellido }}
           </option>
         </select>
+        <input v-model="nuevoCurso.drive_url" placeholder="URL de Google Drive" class="border p-2 rounded" />
+        <input v-model="nuevoCurso.periodo" type="hidden" />
       
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Guardar</button>
       </form>
@@ -109,12 +149,46 @@ function eliminarCurso(id) {
             <div class="text-xs text-gray-500 mb-1">{{ curso.docente?.nombre ?? '' }}</div>
             <div class="text-sm text-gray-700 mb-2 truncate">{{ curso.descripcion ?? 'Ver tus tareas' }}</div>
           </div>
-          <!-- Puedes agregar aquí íconos decorativos si quieres, pero sin acciones -->
-          <div class="flex justify-end gap-4 px-4 pb-4 border-t pt-2">
-            <!-- Íconos decorativos opcionales -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v4a1 1 0 001 1h3m10 0h3a1 1 0 001-1V7m-1 4V7a2 2 0 00-2-2H6a2 2 0 00-2 2v4m16 0v10a2 2 0 01-2 2H6a2 2 0 01-2-2V11" /></svg>
+          <!-- Botones -->
+          <div class="flex justify-end gap-2 px-4 pb-4 border-t pt-2">
+            <!-- Ícono para Google Drive -->
+            <button
+              @click="abrirGoogleDrive(curso.drive_url)"
+              class="text-blue-600 hover:text-blue-800 transition"
+              title="Abrir Google Drive"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v4a1 1 0 001 1h3m10 0h3a1 1 0 001-1V7m-1 4V7a2 2 0 00-2-2H6a2 2 0 00-2 2v4m16 0v10a2 2 0 01-2 2H6a2 2 0 01-2-2V11" />
+              </svg>
+            </button>
+            <!-- Botón para editar -->
+            <button
+              @click="editarCurso(curso.id)"
+              class="text-yellow-600 hover:text-yellow-800 transition"
+              title="Editar curso"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5h6m-6 4h6m-6 4h6m-6 4h6M5 5h.01M5 9h.01M5 13h.01M5 17h.01" />
+              </svg>
+            </button>
+            <!-- Botón para eliminar -->
+            <button
+              @click="eliminarCurso(curso.id)"
+              class="text-red-600 hover:text-red-800 transition"
+              title="Eliminar curso"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
+          <!-- Imagen del curso -->
+          <img
+            v-if="curso.image_url"
+              :src="`/storage/${curso.image_url}`"
+            alt="Imagen del curso"
+            class="w-16 h-16 object-contain"
+          />
         </div>
       </div>
     </div>

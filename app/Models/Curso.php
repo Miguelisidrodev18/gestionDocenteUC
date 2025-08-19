@@ -13,9 +13,10 @@ class Curso extends Model
         'creditos',
         'nivel',
         'modalidad',
-        'image_url',
         'docente_id',
+        'drive_url',
         'user_id',
+        'periodo',
     ];
 
     public function user()
@@ -28,4 +29,3 @@ class Curso extends Model
         return $this->belongsTo(\App\Models\Docente::class);
     }
 };
-0
