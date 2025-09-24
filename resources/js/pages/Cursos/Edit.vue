@@ -4,21 +4,36 @@ import { ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
-const curso = ref(page.props.curso); // Datos del curso que se van a editar
-const docentes = page.props.docentes ?? []; // Lista de docentes
+const docentes = page.props.docentes ?? [];
+const responsables = page.props.responsables ?? [];
+
+const curso = ref({
+  id: page.props.curso.id,
+  nombre: page.props.curso.nombre ?? '',
+  codigo: page.props.curso.codigo ?? '',
+  descripcion: page.props.curso.descripcion ?? '',
+  creditos: page.props.curso.creditos ?? '',
+  nivel: page.props.curso.nivel ?? 'pregrado',
+  modalidad: page.props.curso.modalidad ?? '',
+  docente_id: page.props.curso.docente_id ?? '',
+  drive_url: page.props.curso.drive_url ?? '',
+  responsable_id: page.props.curso.user_id ?? '',
+});
 
 function actualizarCurso() {
-  router.put(`/cursos/${curso.value.id}`, curso.value, {
+  const { id, ...rest } = curso.value;
+  const payload = { ...rest };
+
+  if (!payload.responsable_id) {
+    delete payload.responsable_id;
+  }
+
+  router.put(`/cursos/${id}`, payload, {
     onSuccess: () => {
       alert('Curso actualizado correctamente.');
       router.reload(); // Recarga la página para reflejar los cambios
     }
   });
-}
-
-function handleImageUpload(event) {
-  const file = event.target.files[0];
-  curso.value.image = file; // Agrega el archivo al objeto curso
 }
 </script>
 
@@ -39,12 +54,17 @@ function handleImageUpload(event) {
           <option value="postgrado">Postgrado</option>
         </select>
         <input v-model="curso.modalidad" placeholder="Modalidad" class="border p-2 rounded" required />
-        <input v-model="curso.image_url" placeholder="URL de imagen (opcional)" class="border p-2 rounded" />
         <!-- Selección de docente -->
         <select v-model="curso.docente_id" class="border p-2 rounded" required>
           <option value="">Seleccione un docente</option>
           <option v-for="docente in docentes" :key="docente.id" :value="docente.id">
             {{ docente.nombre }} {{ docente.apellido }}
+          </option>
+        </select>
+        <select v-model="curso.responsable_id" class="border p-2 rounded">
+          <option value="">Seleccione responsable</option>
+          <option v-for="responsable in responsables" :key="responsable.id" :value="responsable.id">
+            {{ responsable.name }}
           </option>
         </select>
         <input v-model="curso.drive_url" placeholder="URL de Google Drive" class="border p-2 rounded" />

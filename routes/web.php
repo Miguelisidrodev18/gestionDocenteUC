@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ChecklistController;
+use App\Http\Controllers\CourseDocumentController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\HorarioController;
@@ -11,7 +13,39 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+// Rutas para administrador (acceso completo)
+Route::middleware(['role:admin'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/docentes', [DocenteController::class, 'index'])->name('docentes.index');
+    Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
+});
+
+// Rutas para docente responsable (también puede subir archivos)
+Route::middleware(['role:responsable', 'role:docente'])->group(function () {
+    Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
+    Route::post('/cursos/upload', [ChecklistController::class, 'upload'])->name('cursos.upload');
+});
+
+// Rutas para docentes (solo suben archivos)
+Route::middleware(['role:docente'])->group(function () {
+    Route::post('/cursos/upload', [ChecklistController::class, 'upload'])->name('cursos.upload');
+});
+
+
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+Route::middleware(['auth', 'verified', 'role:docente,responsable'])->group(function () {
+    Route::get('/docentes', [DocenteController::class, 'index'])->name('docentes.index');
+    Route::post('/cursos/{curso}/documents', [CourseDocumentController::class, 'store'])->name('cursos.documents.store');
+});
+
+Route::middleware(['auth', 'verified', 'role:responsable'])->group(function () {
+    Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
+    Route::patch('/cursos/documents/{document}', [ChecklistController::class, 'update'])->name('cursos.documents.update');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/docents',[DocenteController::class,'index'])->name('teachers.index');

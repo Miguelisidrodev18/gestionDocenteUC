@@ -2,23 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Curso;
+use App\Models\Docente;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 class CursoController extends Controller
 {
     public function index(Request $request)
     {
-        $periodo = $request->get('periodo', '2025-2'); // Obtén el período de la solicitud, por defecto '2025-2'
-        $cursos = \App\Models\Curso::where('user_id', auth()->id())
-            ->where('periodo', $periodo)
-            ->with('docente')
-            ->get();
-        $docentes = \App\Models\Docente::all();
+        $periodo = $request->get('periodo', '2025-2');
+        $user = $request->user();
+
+        $cursosQuery = Curso::with(['docente', 'responsable'])
+            ->where('periodo', $periodo);
+
+        if ($user) {
+            if ($user->isAdmin()) {
+                // Admin ve todos los cursos
+            } elseif ($user->isResponsable()) {
+                $cursosQuery->where('user_id', $user->id);
+            } else {
+                $docenteId = $user->docente?->id;
+                $cursosQuery->where(function ($query) use ($user, $docenteId) {
+                    $query->where('user_id', $user->id);
+
+                    if ($docenteId) {
+                        $query->orWhere('docente_id', $docenteId);
+                    }
+                });
+            }
+        }
+
+        $cursos = $cursosQuery->get();
+        $docentes = Docente::all();
+        $responsables = User::whereIn('role', ['responsable', 'admin'])->get();
 
         return Inertia::render('Cursos/Index', [
             'cursos' => $cursos,
             'docentes' => $docentes,
-            'periodo' => $periodo, // Envía el período actual
+            'responsables' => $responsables,
+            'periodo' => $periodo,
         ]);
     }
     public function store(Request $request)
@@ -32,10 +56,11 @@ class CursoController extends Controller
         'modalidad' => 'required|string',
         'docente_id' => 'required|exists:docentes,id',
         'drive_url' => 'nullable|url',
-        'periodo' => 'required|string', // Validación para el período
+        'periodo' => 'required|string',
+        'responsable_id' => 'nullable|exists:users,id',
     ]);
 
-    \App\Models\Curso::create([
+    Curso::create([
         'nombre' => $request->nombre,
         'codigo' => $request->codigo,
         'descripcion' => $request->descripcion,
@@ -44,7 +69,7 @@ class CursoController extends Controller
         'modalidad' => $request->modalidad,
         'docente_id' => $request->docente_id,
         'drive_url' => $request->drive_url,
-        'user_id' => auth()->id(),
+        'user_id' => $request->responsable_id ?? $request->user()->id,
         'periodo' => $request->periodo,
     ]);
 
@@ -52,17 +77,19 @@ class CursoController extends Controller
 }
 public function edit($id)
 {
-    $curso = \App\Models\Curso::findOrFail($id);
-    $docentes = \App\Models\Docente::all();
+    $curso = Curso::with(['docente', 'responsable'])->findOrFail($id);
+    $docentes = Docente::all();
+    $responsables = User::where('role', 'responsable')->get();
 
     return Inertia::render('Cursos/Edit', [
         'curso' => $curso,
         'docentes' => $docentes,
+        'responsables' => $responsables,
     ]);
 }
 public function destroy($id)
 {
-    $curso = \App\Models\Curso::findOrFail($id);
+    $curso = Curso::findOrFail($id);
     $curso->delete();
 
     return redirect()->route('cursos.index')->with('success', 'Curso eliminado correctamente');
@@ -76,19 +103,23 @@ public function update(Request $request, $id)
         'creditos' => 'required|integer',
         'nivel' => 'required|in:pregrado,postgrado',
         'modalidad' => 'required|string',
-        'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         'docente_id' => 'required|exists:docentes,id',
         'drive_url' => 'nullable|url',
+        'responsable_id' => 'nullable|exists:users,id',
     ]);
 
-    $curso = \App\Models\Curso::findOrFail($id);
-
-    if ($request->hasFile('image')) {
-        $imagePath = $request->file('image')->store('cursos', 'public');
-        $curso->image_url = $imagePath;
-    }
-
-    $curso->update($request->except('image'));
+    $curso = Curso::findOrFail($id);
+    $curso->update([
+        'nombre' => $request->nombre,
+        'codigo' => $request->codigo,
+        'descripcion' => $request->descripcion,
+        'creditos' => $request->creditos,
+        'nivel' => $request->nivel,
+        'modalidad' => $request->modalidad,
+        'docente_id' => $request->docente_id,
+        'drive_url' => $request->drive_url,
+        'user_id' => $request->responsable_id ?? $curso->user_id,
+    ]);
 
     return redirect()->route('cursos.index')->with('success', 'Curso actualizado correctamente');
 }

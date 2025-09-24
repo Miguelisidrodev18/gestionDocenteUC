@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory; // Importa el trait HasFactory
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Docente extends Model
 {
@@ -21,6 +22,7 @@ class Docente extends Model
         'linkedin',
         'estado',
         'cip',
+        'user_id',
     ];
 
     /**
@@ -37,5 +39,13 @@ class Docente extends Model
     public function actualizaciones(): HasMany
     {
         return $this->hasMany(Actualizacion::class);
+    }
+    
+    /**
+     * Get the user that owns the docente
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

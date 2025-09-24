@@ -1,8 +1,8 @@
 <script setup lang="ts">            
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, usePage, Link, router } from '@inertiajs/vue3';
-import {Docente, type BreadcrumbItem, type SharedData } from '@/types';    
-import { Table,TableBody, TableCaption , TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Docente, type BreadcrumbItem, type SharedData } from '@/types';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 // Iconos
 import { CirclePlus, Pencil, Trash } from 'lucide-vue-next';
@@ -13,7 +13,7 @@ interface DocentPageProps extends SharedData{
 }
 
 const props = usePage<DocentPageProps>();
-const docents= computed(()=> props.props.docents);
+const docents = computed(() => props.props.docents);
 //breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [{title:"Docentes", href:'/docents'}]
 //método para eliminar
@@ -36,7 +36,7 @@ const deleteDocente = (id: number) => {
 </script>
 
 <template>  
-  <head title="Docentes"/>
+  <Head title="Docentes" />
   <AppLayout :breadcrumbs="breadcrumbs"> 
     <!-- Mostrar mensaje de éxito -->
     <div v-if="$page.props.flash && $page.props.flash.success" class="bg-green-100 text-green-800 p-2 rounded mb-4">
@@ -45,11 +45,11 @@ const deleteDocente = (id: number) => {
 
     <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">
       <div class="flex">
-        <button as-child size="sa" class="bg-indigo-500 text-white hover:bg-indigo-700 px-4 py-2 rounded">  
+        <Button asChild class="bg-indigo-500 text-white hover:bg-indigo-700 px-4 py-2">
           <Link href="/docents/create">
             <CirclePlus /> Crear Docente
           </Link>
-        </button>
+        </Button>
       </div>
     </div> 
 
@@ -98,20 +98,20 @@ const deleteDocente = (id: number) => {
                 No disponible
               </template>
             </TableCell>
-            <TableCell>{{ docent.linkedin }}</TableCell>
-            <TableCell>{{ docent.activo !== undefined ? (docent.activo ? 'Activo' : 'Inactivo') : 'N/A' }}</TableCell>
+            <TableCell>{{ docent.linkedin ?? 'N/A' }}</TableCell>
+            <TableCell>{{ docent.estado ? (docent.estado === 'activo' ? 'Activo' : 'Inactivo') : 'N/A' }}</TableCell>
             <TableCell>{{ docent.cip }}</TableCell>
             <TableCell class="flex justify-center gap-2">
                 <!-- Botón para Editar -->
-                <button as-child size="sa" class="bg-blue-500 text-white hover:bg-blue-700">
-                    <Link :href="'/docents/' + docent.id + '/edit'">
-                        <Pencil />
-                    </Link>
-                </button>
+                <Button asChild class="bg-blue-500 text-white hover:bg-blue-700">
+                  <Link :href="`/docents/${docent.id}/edit`">
+                    <Pencil />
+                  </Link>
+                </Button>
                 <!-- Botón para Eliminar -->
-                <button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
-                    <Trash />
-                </button>
+                <Button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
+                  <Trash />
+                </Button>
                 
             </TableCell>
           </TableRow>

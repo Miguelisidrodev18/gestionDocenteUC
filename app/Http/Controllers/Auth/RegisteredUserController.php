@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Docente;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -34,18 +35,46 @@ class RegisteredUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role' => 'required|in:admin,docente,responsable', // Validación para el rol
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => $request->role, // Asigna el rol
+            'email_verified_at' => now(),
         ]);
+
+        if (in_array($request->role, ['docente', 'responsable'], true)) {
+            [$nombre, $apellido] = array_pad(preg_split('/\s+/', trim($request->name), 2), 2, '');
+            $nombre = trim((string) $nombre);
+            $apellido = trim((string) $apellido);
+
+            Docente::create([
+                'user_id' => $user->id,
+                'nombre' => $nombre !== '' ? $nombre : $request->name,
+                'apellido' => $apellido !== '' ? $apellido : 'Pendiente',
+                'dni' => sprintf('TMP-%06d', $user->id),
+                'email' => $user->email,
+                'telefono' => null,
+                'especialidad' => 'Pendiente',
+                'cv_personal' => null,
+                'cv_sunedu' => null,
+                'linkedin' => null,
+                'estado' => 'activo',
+                'cip' => null,
+            ]);
+        }
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return to_route('dashboard');
+        return match ($user->role) {
+            'admin' => to_route('dashboard'),
+            'responsable', 'docente' => to_route('cursos.index'),
+            default => to_route('dashboard'),
+        };
     }
 }

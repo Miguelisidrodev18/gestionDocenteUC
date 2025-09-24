@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 
@@ -64,22 +64,20 @@ const submit = () => {
     router.put(`/docents/${props.docent.id}`, data, {
         forceFormData: true,
         onSuccess: () => {
+            errors.value = {};
             router.visit('/docents', { replace: true }); // Redirigir a la lista de docentes
         },
-        onError: (err) => {
+        onError: (formErrors) => {
             errors.value = Object.fromEntries(
-                Object.entries(err).map(([key, value]) => [key, Array.isArray(value) ? value : [String(value)]])
-            ); // Captura los errores de validación
-            console.error(err);
+                Object.entries(formErrors).map(([key, value]) => [key, Array.isArray(value) ? value : [String(value)]])
+            );
         },
     });
 };
-
-console.log(props.docent);
 </script>
 
 <template>
-    <head title="Editar Docente" />
+    <Head title="Editar Docente" />
     <AppLayout :breadcrumbs="Breadcrumbs">
         <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
             <h1 class="text-2xl font-bold">Editar Docente</h1>

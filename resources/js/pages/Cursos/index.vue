@@ -4,8 +4,9 @@ import { ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
-const docentes = page.props.docentes ?? []; // Debes pasar docentes desde el backend
-const cursos = usePage().props.cursos ?? [];
+const docentes = page.props.docentes ?? [];
+const responsables = page.props.responsables ?? [];
+const cursos = page.props.cursos ?? [];
 
 const mostrarFormulario = ref(false);
 const nuevoCurso = ref({
@@ -15,15 +16,23 @@ const nuevoCurso = ref({
   creditos: '',
   nivel: 'pregrado',
   modalidad: 'presencial',
-  image_url: '',
   docente_id: '',
   drive_url: '',
+  responsable_id: '',
 });
 const periodoSeleccionado = ref(usePage().props.periodo ?? '2025-2'); // Obtén el período desde el backend o usa un valor por defecto
 
 function agregarCurso() {
-  nuevoCurso.value.periodo = periodoSeleccionado.value; // Asigna el período seleccionado al nuevo curso
-  router.post('/cursos', nuevoCurso.value, {
+  const payload = {
+    ...nuevoCurso.value,
+    periodo: periodoSeleccionado.value,
+  };
+
+  if (!payload.responsable_id) {
+    delete payload.responsable_id;
+  }
+
+  router.post('/cursos', payload, {
     onSuccess: () => {
       alert('Curso creado correctamente.');
       mostrarFormulario.value = false;
@@ -36,7 +45,7 @@ function agregarCurso() {
         modalidad: 'presencial',
         docente_id: '',
         drive_url: '',
-        periodo: periodoSeleccionado.value, // Reinicia el período con el valor seleccionado
+        responsable_id: '',
       };
       router.reload(); // Recarga la página para reflejar los cambios
     },
@@ -70,14 +79,8 @@ function eliminarCurso(id) {
   }
 }
 
-function handleImageUpload(event) {
-  const file = event.target.files[0];
-  nuevoCurso.value.image = file; // Agrega el archivo al objeto nuevoCurso
-}
-
 function cambiarPeriodo() {
-  nuevoCurso.value.periodo = periodoSeleccionado.value; // Actualiza el período en el nuevo curso
-  router.get('/cursos', { periodo: periodoSeleccionado.value }); // Redirige con el período seleccionado
+  router.get('/cursos', { periodo: periodoSeleccionado.value });
 }
 </script>
 
@@ -126,8 +129,13 @@ function cambiarPeriodo() {
             {{ docente.nombre }} {{ docente.apellido }}
           </option>
         </select>
+        <select v-model="nuevoCurso.responsable_id" class="border p-2 rounded">
+          <option value="">Seleccione responsable</option>
+          <option v-for="responsable in responsables" :key="responsable.id" :value="responsable.id">
+            {{ responsable.name }}
+          </option>
+        </select>
         <input v-model="nuevoCurso.drive_url" placeholder="URL de Google Drive" class="border p-2 rounded" />
-        <input v-model="nuevoCurso.periodo" type="hidden" />
       
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Guardar</button>
       </form>
@@ -146,7 +154,8 @@ function cambiarPeriodo() {
             </span>
           </div>
           <div class="p-4 flex-1">
-            <div class="text-xs text-gray-500 mb-1">{{ curso.docente?.nombre ?? '' }}</div>
+            <div class="text-xs text-gray-500 mb-1">Docente: {{ curso.docente?.nombre ?? 'Sin asignar' }}</div>
+            <div class="text-xs text-gray-500 mb-1">Responsable: {{ curso.responsable?.name ?? 'Sin asignar' }}</div>
             <div class="text-sm text-gray-700 mb-2 truncate">{{ curso.descripcion ?? 'Ver tus tareas' }}</div>
           </div>
           <!-- Botones -->
@@ -182,13 +191,6 @@ function cambiarPeriodo() {
               </svg>
             </button>
           </div>
-          <!-- Imagen del curso -->
-          <img
-            v-if="curso.image_url"
-              :src="`/storage/${curso.image_url}`"
-            alt="Imagen del curso"
-            class="w-16 h-16 object-contain"
-          />
         </div>
       </div>
     </div>

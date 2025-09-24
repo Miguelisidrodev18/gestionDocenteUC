@@ -80,6 +80,7 @@ const submit = () => {
     router.post('/docents', data, {
         forceFormData: true,
         onSuccess: () => {
+            errors.value = {};
             Swal.fire({
                 icon: 'success',
                 title: 'Docente creado',
@@ -88,17 +89,15 @@ const submit = () => {
                 router.visit('/docents'); // Redirigir al inicio de docentes
             });
         },
-        onError: (err) => {
-            if (err.response && err.response.status === 422) {
-                errors.value = err.response.data.errors; // Captura los errores de validación
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.',
-                });
-            }
-            console.error(err);
+        onError: (formErrors) => {
+            errors.value = Object.fromEntries(
+                Object.entries(formErrors).map(([key, value]) => [key, Array.isArray(value) ? value : [String(value)]])
+            );
+            Swal.fire({
+                icon: 'error',
+                title: 'Corrige los errores',
+                text: 'Revisa los campos marcados e inténtalo nuevamente.',
+            });
         },
     });
 };
@@ -121,6 +120,7 @@ const confirmCancel = () => {
 
 <template>
     <div v-if="form">
+        <Head title="Crear Docente" />
         <AppLayout :breadcrumbs="Breadcrumbs">
             <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
                 <h1 class="text-2xl font-bold">Crear Docente</h1>

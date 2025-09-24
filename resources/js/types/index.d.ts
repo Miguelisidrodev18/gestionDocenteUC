@@ -33,6 +33,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    role: 'admin' | 'docente' | 'responsable';
 }
 
 export interface Docente {
@@ -46,8 +47,24 @@ export interface Docente {
     cv_sunedu: string | null;
     cv_personal: string | null;
     linkedin: string | null;
+    estado: 'activo' | 'inactivo';
+    cip: string | null;
+    user_id: number | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface CourseDocument {
+    id: number;
+    curso_id: number;
+    docente_id: number;
+    uploaded_by: number;
+    path: string;
+    mime: string;
+    status: 'pendiente' | 'conforme_preliminar' | 'validado';
+    created_at: string;
+    updated_at: string;
+    docente?: Docente | null;
 }
 
 export interface Cursos {
@@ -57,5 +74,10 @@ export interface Cursos {
     descripcion: string;
     creditos: number;
     nivel: string;
-
+    modalidad: string;
+    drive_url?: string | null;
+    periodo?: string;
+    documents?: CourseDocument[];
+    docente?: Docente | null;
+    responsable?: User | null;
 }

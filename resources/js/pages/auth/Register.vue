@@ -13,6 +13,7 @@ const form = useForm({
     email: '',
     password: '',
     password_confirmation: '',
+    role: '',
 });
 
 const submit = () => {
@@ -66,6 +67,14 @@ const submit = () => {
                         placeholder="Confirm password"
                     />
                     <InputError :message="form.errors.password_confirmation" />
+                </div>
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700">Rol</label>
+                    <select id="role" v-model="form.role" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <option value="admin">Administrador</option>
+                        <option value="docente">Docente</option>
+                        <option value="responsable">Responsable</option>
+                    </select>
                 </div>
 
                 <Button type="submit" class="mt-2 w-full" tabindex="5" :disabled="form.processing">
