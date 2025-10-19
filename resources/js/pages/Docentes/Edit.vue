@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onBeforeUnmount } from 'vue';
 import { Button } from '@/components/ui/button';
+import PdfFileCard from '@/components/PdfFileCard.vue';
 
 type BreadcrumbItem = { title: string; href: string };
 const Breadcrumbs: BreadcrumbItem[] = [
@@ -42,11 +43,27 @@ const form = ref<FormFields>({
     cip: props.docent.cip ?? '',
 });
 
+const cvPersonalUrl = ref<string | null>(props.docent.cv_personal ? `/storage/${props.docent.cv_personal}` : null);
+const cvSuneduUrl = ref<string | null>(props.docent.cv_sunedu ? `/storage/${props.docent.cv_sunedu}` : null);
+
 // Manejar archivos
 const handleFileChange = (e: Event, key: string) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
-        form.value[key] = target.files[0];
+        const file = target.files[0];
+        form.value[key] = file;
+        const url = URL.createObjectURL(file);
+        if (key === 'cv_personal') {
+            if (cvPersonalUrl.value?.startsWith('blob:')) {
+                URL.revokeObjectURL(cvPersonalUrl.value);
+            }
+            cvPersonalUrl.value = url;
+        } else if (key === 'cv_sunedu') {
+            if (cvSuneduUrl.value?.startsWith('blob:')) {
+                URL.revokeObjectURL(cvSuneduUrl.value);
+            }
+            cvSuneduUrl.value = url;
+        }
     }
 };
 
@@ -74,6 +91,14 @@ const submit = () => {
         },
     });
 };
+onBeforeUnmount(() => {
+    if (cvPersonalUrl.value?.startsWith('blob:')) {
+        URL.revokeObjectURL(cvPersonalUrl.value);
+    }
+    if (cvSuneduUrl.value?.startsWith('blob:')) {
+        URL.revokeObjectURL(cvSuneduUrl.value);
+    }
+});
 </script>
 
 <template>
@@ -112,10 +137,16 @@ const submit = () => {
                 <div>
                     <label>CV Personal (PDF)</label>
                     <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
+                    <div v-if="cvPersonalUrl" class="mt-3">
+                        <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? props.docent.cv_personal?.split('/').pop() ?? 'cv_personal.pdf'" />
+                    </div>
                 </div>
                 <div>
                     <label>CV Sunedu (PDF)</label>
                     <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
+                    <div v-if="cvSuneduUrl" class="mt-3">
+                        <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? props.docent.cv_sunedu?.split('/').pop() ?? 'cv_sunedu.pdf'" />
+                    </div>
                 </div>
                 <div>
                     <label>LinkedIn</label>
@@ -137,3 +168,4 @@ const submit = () => {
         </div>
     </AppLayout>
 </template>
+

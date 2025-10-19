@@ -4,6 +4,7 @@ import { Head, usePage, Link, router } from '@inertiajs/vue3';
 import { Docente, type BreadcrumbItem, type SharedData } from '@/types';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import PdfFileCard from '@/components/PdfFileCard.vue';
 // Iconos
 import { CirclePlus, Pencil, Trash } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -14,6 +15,7 @@ interface DocentPageProps extends SharedData{
 
 const props = usePage<DocentPageProps>();
 const docents = computed(() => props.props.docents);
+const auth = computed(() => props.props.auth);
 //breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [{title:"Docentes", href:'/docents'}]
 //método para eliminar
@@ -45,7 +47,7 @@ const deleteDocente = (id: number) => {
 
     <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">
       <div class="flex">
-        <Button asChild class="bg-indigo-500 text-white hover:bg-indigo-700 px-4 py-2">
+        <Button v-if="auth.user.role !== 'docente'" asChild class="bg-indigo-500 text-white hover:bg-indigo-700 px-4 py-2">
           <Link href="/docents/create">
             <CirclePlus /> Crear Docente
           </Link>
@@ -82,17 +84,23 @@ const deleteDocente = (id: number) => {
             <TableCell>{{ docent.email ?? 'N/A' }}</TableCell>
             <TableCell>{{ docent.telefono }}</TableCell>
             <TableCell>{{ docent.especialidad }}</TableCell>
-            <TableCell>
+            <TableCell class="text-center">
               <template v-if="docent.cv_personal">
-                <a :href="`/storage/${docent.cv_personal}`" target="_blank">Ver CV Personal</a>
+                <PdfFileCard
+                  :url="`/storage/${docent.cv_personal}`"
+                  :name="docent.cv_personal.split('/').pop() ?? 'cv_personal.pdf'"
+                />
               </template>
               <template v-else>
                 No disponible
               </template>
             </TableCell>
-            <TableCell>
+            <TableCell class="text-center">
               <template v-if="docent.cv_sunedu">
-                <a :href="`/storage/${docent.cv_sunedu}`" target="_blank">Ver CV Sunedu</a>
+                <PdfFileCard
+                  :url="`/storage/${docent.cv_sunedu}`"
+                  :name="docent.cv_sunedu.split('/').pop() ?? 'cv_sunedu.pdf'"
+                />
               </template>
               <template v-else>
                 No disponible
@@ -103,13 +111,13 @@ const deleteDocente = (id: number) => {
             <TableCell>{{ docent.cip }}</TableCell>
             <TableCell class="flex justify-center gap-2">
                 <!-- Botón para Editar -->
-                <Button asChild class="bg-blue-500 text-white hover:bg-blue-700">
+                <Button v-if="auth.user.role !== 'docente' || docent.user_id === auth.user.id" asChild class="bg-blue-500 text-white hover:bg-blue-700">
                   <Link :href="`/docents/${docent.id}/edit`">
                     <Pencil />
                   </Link>
                 </Button>
                 <!-- Botón para Eliminar -->
-                <Button class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
+                <Button v-if="auth.user.role !== 'docente'" class="bg-red-500 text-white hover:bg-red-700" @click="deleteDocente(docent.id)">
                   <Trash />
                 </Button>
                 

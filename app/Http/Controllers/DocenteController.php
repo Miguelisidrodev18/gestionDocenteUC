@@ -13,6 +13,17 @@ class DocenteController extends Controller
      */
     public function index()
     {
+        $user = auth()->user();
+
+        // If docente, only show their own Docente record
+        if ($user && $user->role === 'docente') {
+            $own = Docente::where('user_id', $user->id)->get();
+            return Inertia::render('Docentes/index', [
+                'docents' => $own,
+            ]);
+        }
+
+        // Admin/responsable can see all
         return Inertia::render('Docentes/index', [
             'docents'=> Docente::all(),
         ]);
@@ -23,6 +34,10 @@ class DocenteController extends Controller
      */
     public function create()
     {
+        // Only non-docente may access create
+        if (auth()->user()?->role === 'docente') {
+            abort(403);
+        }
         return Inertia::render('Docentes/create',);
 
     }
@@ -32,6 +47,10 @@ class DocenteController extends Controller
      */
     public function store(Request $request)
     {
+        // Only non-docente may create
+        if (auth()->user()?->role === 'docente') {
+            abort(403);
+        }
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'apellido' => 'required|string|max:255',
@@ -71,6 +90,12 @@ class DocenteController extends Controller
     {
         // Log::info('Docente ID: ' . $docent->id); // Uncomment if you want to log the docente ID
 
+        // Docente users can only edit their own record
+        $user = auth()->user();
+        if ($user && $user->role === 'docente' && $docent->user_id !== $user->id) {
+            abort(403);
+        }
+
         return Inertia::render('Docentes/Edit', [
             'docent' => $docent,
         ]);
@@ -79,6 +104,12 @@ class DocenteController extends Controller
     public function update(Request $request, $id)
     {
         $docente = Docente::findOrFail($id);
+
+        // Docente users can only update their own record
+        $user = auth()->user();
+        if ($user && $user->role === 'docente' && $docente->user_id !== $user->id) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
@@ -112,6 +143,11 @@ class DocenteController extends Controller
     public function destroy($id) 
     {       
         $docente = Docente::findOrFail($id); 
+
+        // Only non-docente may delete
+        if (auth()->user()?->role === 'docente') {
+            abort(403);
+        }
         $docente->delete(); 
         return redirect()->route('teachers.index')->with('success', 'Docente eliminado correctamente.');
     } 
