@@ -41,11 +41,32 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'csrf_token' => csrf_token(),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
             ],
+            'notifications' => $request->user()?->unreadNotifications()->latest()->limit(10)->get()->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'type' => $n->data['type'] ?? null,
+                    'message' => $n->data['message'] ?? null,
+                    'link' => $n->data['link'] ?? null,
+                    'created_at' => $n->created_at?->toIso8601String(),
+                ];
+            }) ?? [],
+            'notifications_all' => $request->user()?->notifications()->latest()->limit(20)->get()->map(function ($n) {
+                return [
+                    'id' => $n->id,
+                    'type' => $n->data['type'] ?? null,
+                    'message' => $n->data['message'] ?? null,
+                    'link' => $n->data['link'] ?? null,
+                    'created_at' => $n->created_at?->toIso8601String(),
+                    'read_at' => $n->read_at?->toIso8601String(),
+                ];
+            }) ?? [],
+            'notifications_count' => $request->user()?->unreadNotifications()->count() ?? 0,
             'ziggy' => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

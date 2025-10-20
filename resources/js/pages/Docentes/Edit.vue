@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, onBeforeUnmount } from 'vue';
@@ -74,11 +74,12 @@ const submit = () => {
     Object.entries(form.value).forEach(([key, value]) => {
         if (value !== null) data.append(key, value as any);
     });
+    data.append('_method', 'put');
 
-    console.log([...data.entries()]); // Verifica los datos que se están enviando
 
 
-    router.put(`/docents/${props.docent.id}`, data, {
+
+    router.post(`/docents/${props.docent.id}`, data, {
         forceFormData: true,
         onSuccess: () => {
             errors.value = {};
@@ -102,70 +103,71 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head title="Editar Docente" />
-    <AppLayout :breadcrumbs="Breadcrumbs">
-        <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
-            <h1 class="text-2xl font-bold">Editar Docente</h1>
-            <form @submit.prevent="submit" class="space-y-6 max-w-lg">
-                <div>
-                    <label>Nombre</label>
-                    <input v-model="form.nombre" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.nombre" class="text-red-500 text-sm">{{ errors.nombre?.[0] }}</p>
-                </div>
-                <div>
-                    <label>Apellido</label>
-                    <input v-model="form.apellido" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido?.[0] }}</p>
-                </div>
-                <div>
-                    <label>DNI</label>
-                    <input v-model="form.dni" type="text" class="w-full border rounded px-2 py-1" />
-                    <p v-if="errors.dni" class="text-red-500 text-sm">{{ errors.dni?.[0] }}</p>
-                </div>
-                <div>
-                    <label>Email</label>
-                    <input v-model="form.email" type="email" class="w-full border rounded px-2 py-1" />
-                </div>
-                <div>
-                    <label>Teléfono</label>
-                    <input v-model="form.telefono" type="text" class="w-full border rounded px-2 py-1" />
-                </div>
-                <div>
-                    <label>Especialidad</label>
-                    <input v-model="form.especialidad" type="text" class="w-full border rounded px-2 py-1" />
-                </div>
-                <div>
-                    <label>CV Personal (PDF)</label>
-                    <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
-                    <div v-if="cvPersonalUrl" class="mt-3">
-                        <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? props.docent.cv_personal?.split('/').pop() ?? 'cv_personal.pdf'" />
-                    </div>
-                </div>
-                <div>
-                    <label>CV Sunedu (PDF)</label>
-                    <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
-                    <div v-if="cvSuneduUrl" class="mt-3">
-                        <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? props.docent.cv_sunedu?.split('/').pop() ?? 'cv_sunedu.pdf'" />
-                    </div>
-                </div>
-                <div>
-                    <label>LinkedIn</label>
-                    <input v-model="form.linkedin" type="text" class="w-full border rounded px-2 py-1" />
-                </div>
-                <div>
-                    <label>Estado</label>
-                    <select v-model="form.estado" class="w-full border rounded px-2 py-1">
-                        <option value="activo">Activo</option>
-                        <option value="inactivo">Inactivo</option>
-                    </select>
-                </div>
-                <div>
-                    <label>CIP</label>
-                    <input v-model="form.cip" type="text" class="w-full border rounded px-2 py-1" />
-                </div>
-                <Button type="submit" class="bg-blue-500 text-white">Guardar</Button>
-            </form>
+  <Head title="Editar Docente" />
+  <AppLayout :breadcrumbs="Breadcrumbs">
+    <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
+      <h1 class="text-2xl font-bold">Editar Docente</h1>
+      <form @submit.prevent="submit" class="space-y-6 max-w-lg">
+        <div>
+          <label>Nombre</label>
+          <input v-model="form.nombre" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+          <p v-if="errors.nombre" class="text-red-500 text-sm">{{ errors.nombre?.[0] }}</p>
         </div>
-    </AppLayout>
+        <div>
+          <label>Apellido</label>
+          <input v-model="form.apellido" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+          <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido?.[0] }}</p>
+        </div>
+        <div>
+          <label>DNI</label>
+          <input v-model="form.dni" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+          <p v-if="errors.dni" class="text-red-500 text-sm">{{ errors.dni?.[0] }}</p>
+        </div>
+        <div>
+          <label>Email</label>
+          <input v-model="form.email" type="email" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div>
+          <label>Teléfono</label>
+          <input v-model="form.telefono" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div>
+          <label>Especialidad</label>
+          <input v-model="form.especialidad" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div>
+          <label>CV Personal (PDF)</label>
+          <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
+          <div v-if="cvPersonalUrl" class="mt-3">
+            <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? props.docent.cv_personal?.split('/').pop() ?? 'cv_personal.pdf'" />
+          </div>
+        </div>
+        <div>
+          <label>CV Sunedu (PDF)</label>
+          <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
+          <div v-if="cvSuneduUrl" class="mt-3">
+            <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? props.docent.cv_sunedu?.split('/').pop() ?? 'cv_sunedu.pdf'" />
+          </div>
+        </div>
+        <div>
+          <label>LinkedIn</label>
+          <input v-model="form.linkedin" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div>
+          <label>Estado</label>
+          <select v-model="form.estado" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div>
+          <label>CIP</label>
+          <input v-model="form.cip" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <Button type="submit" class="bg-primary text-primary-foreground">Guardar</Button>
+      </form>
+    </div>
+  </AppLayout>
 </template>
+
 

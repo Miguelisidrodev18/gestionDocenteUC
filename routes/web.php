@@ -5,43 +5,28 @@ use App\Http\Controllers\CourseDocumentController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\CursoController;
 use App\Http\Controllers\HorarioController;
+use App\Http\Controllers\MeetingController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    return redirect()->route('login');
 })->name('home');
 
 
-// Rutas para administrador (acceso completo)
-Route::middleware(['role:admin'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/docentes', [DocenteController::class, 'index'])->name('docentes.index');
-    Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
-});
-
-// Rutas para docente responsable (también puede subir archivos)
-Route::middleware(['role:responsable', 'role:docente'])->group(function () {
-    Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
-    Route::post('/cursos/upload', [ChecklistController::class, 'upload'])->name('cursos.upload');
-});
-
-// Rutas para docentes (solo suben archivos)
-Route::middleware(['role:docente'])->group(function () {
-    Route::post('/cursos/upload', [ChecklistController::class, 'upload'])->name('cursos.upload');
-});
-
-
-Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
+// Dashboard (autenticados)
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
+// Subida de documentos de cursos (docente o responsable). Admin también pasa por el middleware
 Route::middleware(['auth', 'verified', 'role:docente,responsable'])->group(function () {
-    Route::get('/docentes', [DocenteController::class, 'index'])->name('docentes.index');
     Route::post('/cursos/{curso}/documents', [CourseDocumentController::class, 'store'])->name('cursos.documents.store');
 });
 
+// Checklist de cursos (solo responsables; admin permitido por el middleware personalizado)
 Route::middleware(['auth', 'verified', 'role:responsable'])->group(function () {
     Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
     Route::patch('/cursos/documents/{document}', [ChecklistController::class, 'update'])->name('cursos.documents.update');
@@ -66,12 +51,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/horarios',[HorarioController::class,'index'])->name('horarios.index');
-    Route::get('/horarios/create',[HorarioController::class,'create'])->name('horarios.create');
-    Route::post('/horarios',[HorarioController::class,'store'])->name('horarios.store');
-    Route::get('/horarios/{horario}/edit',[HorarioController::class,'edit'])->name('horarios.edit');
-    Route::put('/horarios/{horario}',[HorarioController::class,'update'])->name('horarios.update');
-    Route::delete('/horarios/{horario}',[HorarioController::class,'destroy'])->name('horarios.destroy');
+    // Calendario y reuniones de cursos
+    Route::get('/horarios', [MeetingController::class, 'index'])->name('horarios.index');
+    Route::post('/horarios/meetings', [MeetingController::class, 'store'])->name('meetings.store');
+    Route::put('/horarios/meetings/{meeting}', [MeetingController::class, 'update'])->name('meetings.update');
+    Route::delete('/horarios/meetings/{meeting}', [MeetingController::class, 'destroy'])->name('meetings.destroy');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.readAll');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
 });
 /*
 Route::middleware(['auth', 'verified'])->group(function () {

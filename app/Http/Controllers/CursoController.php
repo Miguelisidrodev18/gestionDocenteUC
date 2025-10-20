@@ -12,6 +12,7 @@ class CursoController extends Controller
     public function index(Request $request)
     {
         $periodo = $request->get('periodo', '2025-2');
+        $docenteFilter = $request->get('docente_id');
         $user = $request->user();
 
         $cursosQuery = Curso::with(['docente', 'responsable'])
@@ -19,7 +20,10 @@ class CursoController extends Controller
 
         if ($user) {
             if ($user->isAdmin()) {
-                // Admin ve todos los cursos
+                // Admin ve todos; si hay filtro por docente, aplicarlo
+                if ($docenteFilter) {
+                    $cursosQuery->where('docente_id', $docenteFilter);
+                }
             } elseif ($user->isResponsable()) {
                 $cursosQuery->where('user_id', $user->id);
             } else {
@@ -43,6 +47,11 @@ class CursoController extends Controller
             'docentes' => $docentes,
             'responsables' => $responsables,
             'periodo' => $periodo,
+            'filters' => [
+                'docente_id' => $docenteFilter,
+            ],
+            'currentDocenteId' => $user?->docente?->id,
+            'currentUserRole' => $user?->role,
         ]);
     }
     public function store(Request $request)

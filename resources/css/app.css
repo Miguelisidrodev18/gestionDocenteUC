@@ -92,4 +92,14 @@ html {
     body {
         @apply bg-background text-foreground;
     }
+
+    ::selection {
+        background-color: hsl(var(--primary) / 0.2);
+        color: hsl(var(--primary-foreground));
+    }
+
+    .dark ::selection {
+        background-color: hsl(var(--primary) / 0.35);
+        color: hsl(var(--primary-foreground));
+    }
 }

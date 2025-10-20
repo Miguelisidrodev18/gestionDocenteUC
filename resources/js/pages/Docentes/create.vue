@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, onBeforeUnmount } from 'vue';
@@ -148,91 +148,89 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div v-if="form">
-        <Head title="Crear Docente" />
-        <AppLayout :breadcrumbs="Breadcrumbs">
-            <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
-                <h1 class="text-2xl font-bold">Crear Docente</h1>
-                <form @submit.prevent="submit" class="space-y-6 max-w-lg">
-                    <div>
-                        <label class="font-semibold">Nombre</label>
-                        <input v-model="form.nombre" type="text" placeholder="Nombre" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.nombre" class="text-red-500 text-sm">{{ errors.nombre[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">Apellido</label>
-                        <input v-model="form.apellido" type="text" placeholder="Apellido" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">DNI</label>
-                        <input v-model="form.dni" type="text" placeholder="DNI" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.dni" class="text-red-500 text-sm">{{ errors.dni[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">Email</label>
-                        <input v-model="form.email" type="email" placeholder="Email" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.email" class="text-red-500 text-sm">{{ errors.email[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">Telefono</label>
-                        <input v-model="form.telefono" type="text" placeholder="Telefono" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.telefono" class="text-red-500 text-sm">{{ errors.telefono[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">Especialidad</label>
-                        <input v-model="form.especialidad" type="text" placeholder="Especialidad" class="w-full rounded-md border border-gray-300 p-2" />
-                        <p v-if="errors.especialidad" class="text-red-500 text-sm">{{ errors.especialidad[0] }}</p>
-                    </div>
-                    <div>
-                        <label class="font-semibold">CV Personal (PDF)</label>
-                        <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
-                        <div v-if="cvPersonalUrl" class="mt-3">
-                            <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? 'cv_personal.pdf'" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="font-semibold">CV Sunedu (PDF)</label>
-                        <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
-                        <div v-if="cvSuneduUrl" class="mt-3">
-                            <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? 'cv_sunedu.pdf'" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="font-semibold">LinkedIn</label>
-                        <input v-model="form.linkedin" type="text" placeholder="LinkedIn" class="w-full rounded-md border border-gray-300 p-2" />
-                    </div>
-                    <div>
-                        <label class="font-semibold">Estado</label>
-                        <select v-model="form.estado" class="w-full rounded-md border border-gray-300 p-2">
-                            <option value="activo">Activo</option>
-                            <option value="inactivo">Inactivo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="font-semibold">CIP</label>
-                        <input v-model="form.cip" type="text" placeholder="CIP" class="w-full rounded-md border border-gray-300 p-2" />
-                    </div>
-                    <div class="flex gap-4">
-                        <Button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-                            Crear Docente
-                        </Button>
-                        <Link
-                            href="/docents"
-                            class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-                            @click.prevent="confirmCancel"
-                        >
-                            Cancelar
-                        </Link>
-                    </div>
-                </form>
+  <div v-if="form">
+    <Head title="Crear Docente" />
+    <AppLayout :breadcrumbs="Breadcrumbs">
+      <div class="flex flex-1 flex-col gap-4 rounded-xl p-4">
+        <h1 class="text-2xl font-bold">Crear Docente</h1>
+        <form @submit.prevent="submit" class="space-y-6 max-w-lg bg-card text-foreground p-6 rounded-xl shadow-sm border border-border">
+          <div>
+            <label class="font-semibold">Nombre</label>
+            <input v-model="form.nombre" type="text" placeholder="Nombre" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.nombre" class="text-red-500 text-sm">{{ errors.nombre[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">Apellido</label>
+            <input v-model="form.apellido" type="text" placeholder="Apellido" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.apellido" class="text-red-500 text-sm">{{ errors.apellido[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">DNI</label>
+            <input v-model="form.dni" type="text" placeholder="DNI" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.dni" class="text-red-500 text-sm">{{ errors.dni[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">Email</label>
+            <input v-model="form.email" type="email" placeholder="Email" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.email" class="text-red-500 text-sm">{{ errors.email[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">Telefono</label>
+            <input v-model="form.telefono" type="text" placeholder="Telefono" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.telefono" class="text-red-500 text-sm">{{ errors.telefono[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">Especialidad</label>
+            <input v-model="form.especialidad" type="text" placeholder="Especialidad" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+            <p v-if="errors.especialidad" class="text-red-500 text-sm">{{ errors.especialidad[0] }}</p>
+          </div>
+          <div>
+            <label class="font-semibold">CV Personal (PDF)</label>
+            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
+            <div v-if="cvPersonalUrl" class="mt-3">
+              <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? 'cv_personal.pdf'" />
             </div>
-        </AppLayout>
-    </div>
-    <div v-else>
-        <p>Cargando...</p>
-    </div>
+          </div>
+          <div>
+            <label class="font-semibold">CV Sunedu (PDF)</label>
+            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
+            <div v-if="cvSuneduUrl" class="mt-3">
+              <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? 'cv_sunedu.pdf'" />
+            </div>
+          </div>
+          <div>
+            <label class="font-semibold">LinkedIn</label>
+            <input v-model="form.linkedin" type="text" placeholder="LinkedIn" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div>
+            <label class="font-semibold">Estado</label>
+            <select v-model="form.estado" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-semibold">CIP</label>
+            <input v-model="form.cip" type="text" placeholder="CIP" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div class="flex gap-4">
+            <Button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90">
+              Crear Docente
+            </Button>
+            <Link href="/docents" class="bg-destructive text-destructive-foreground px-4 py-2 rounded-md hover:opacity-90" @click.prevent="confirmCancel">
+              Cancelar
+            </Link>
+          </div>
+        </form>
+      </div>
+    </AppLayout>
+  </div>
+  <div v-else>
+    <p>Cargando...</p>
+  </div>
 </template>
+
+
 
 
 

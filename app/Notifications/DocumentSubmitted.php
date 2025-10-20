@@ -17,7 +17,8 @@ class DocumentSubmitted extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        // Guardamos también en base de datos para mostrar en la campana
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -38,9 +39,12 @@ class DocumentSubmitted extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'type' => 'checklist',
             'curso_id' => $this->document->curso_id,
             'document_id' => $this->document->id,
             'status' => $this->document->status,
+            'message' => 'Nuevo documento cargado en el curso',
+            'link' => '/cursos/checklist',
         ];
     }
 }

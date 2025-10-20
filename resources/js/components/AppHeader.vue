@@ -18,7 +18,7 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Menu, Search, Bell } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 interface Props {
@@ -31,6 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 const auth = computed(() => page.props.auth);
+const notifications = computed(() => (page.props.notifications ?? []) as any[]);
+const notificationsCount = computed(() => (page.props.notifications_count as number) ?? 0);
 
 const isCurrentRoute = computed(() => (url: string) => page.url === url);
 
@@ -139,6 +141,33 @@ const rightNavItems: NavItem[] = [
                         <Button variant="ghost" size="icon" class="group h-9 w-9 cursor-pointer">
                             <Search class="size-5 opacity-80 group-hover:opacity-100" />
                         </Button>
+
+                        <!-- Notifications -->
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button variant="ghost" size="icon" class="relative h-9 w-9">
+                                    <Bell class="size-5" />
+                                    <span v-if="notificationsCount > 0" class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] text-white">
+                                        {{ notificationsCount }}
+                                    </span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" class="w-80">
+                                <div class="max-h-80 overflow-y-auto">
+                                    <div v-if="notifications.length === 0" class="p-3 text-sm text-muted-foreground">Sin notificaciones</div>
+                                    <div v-for="n in notifications" :key="n.id" class="px-3 py-2 text-sm border-b last:border-b-0">
+                                        <Link :href="n.link || '#'" class="hover:underline">
+                                            {{ n.message }}
+                                        </Link>
+                                        <div class="text-[11px] text-muted-foreground">{{ new Date(n.created_at).toLocaleString() }}</div>
+                                    </div>
+                                </div>
+                                <form method="post" action="/notifications/read-all" class="p-2">
+                                    <input type="hidden" name="_token" :value="page.props.csrf_token" />
+                                    <Button variant="ghost" size="sm" class="w-full">Marcar todas como leídas</Button>
+                                </form>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <div class="hidden space-x-1 lg:flex">
                             <template v-for="item in rightNavItems" :key="item.title">

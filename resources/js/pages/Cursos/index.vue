@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const docentes = page.props.docentes ?? [];
 const responsables = page.props.responsables ?? [];
 const cursos = page.props.cursos ?? [];
+const currentUserRole = page.props.currentUserRole ?? page.props.auth?.user?.role;
+const currentDocenteId = page.props.currentDocenteId ?? null;
 
 const mostrarFormulario = ref(false);
 const nuevoCurso = ref({
@@ -20,7 +22,14 @@ const nuevoCurso = ref({
   drive_url: '',
   responsable_id: '',
 });
-const periodoSeleccionado = ref(usePage().props.periodo ?? '2025-2'); // Obtén el período desde el backend o usa un valor por defecto
+const periodoSeleccionado = ref(usePage().props.periodo ?? '2025-2');
+const filtroDocenteId = ref(page.props.filters?.docente_id ?? '');
+
+onMounted(() => {
+  if (currentUserRole === 'docente' && currentDocenteId) {
+    nuevoCurso.value.docente_id = String(currentDocenteId);
+  }
+});
 
 function agregarCurso() {
   const payload = {
@@ -47,10 +56,10 @@ function agregarCurso() {
         drive_url: '',
         responsable_id: '',
       };
-      router.reload(); // Recarga la página para reflejar los cambios
+      router.reload();
     },
     onError: (errors) => {
-      console.error(errors); // Muestra los errores en la consola
+      console.error(errors);
       alert('Hubo un error al guardar el curso.');
     },
   });
@@ -73,30 +82,45 @@ function eliminarCurso(id) {
     router.delete(`/cursos/${id}`, {
       onSuccess: () => {
         alert('Curso eliminado correctamente.');
-        router.reload(); // Recarga la página para reflejar los cambios
+        router.reload();
       }
     });
   }
 }
 
-function cambiarPeriodo() {
-  router.get('/cursos', { periodo: periodoSeleccionado.value });
+function aplicarFiltros() {
+  const params: Record<string, any> = { periodo: periodoSeleccionado.value };
+  if (currentUserRole === 'admin' && filtroDocenteId.value) {
+    params.docente_id = filtroDocenteId.value;
+  }
+  router.get('/cursos', params);
 }
 </script>
 
 <template>
   <AppLayout>
-    <div class="p-8 bg-gray-100 min-h-screen">
+    <div class="p-8 min-h-screen bg-background text-foreground">
       <h1 class="text-3xl font-bold mb-8 text-center">Asignaturas "{{ periodoSeleccionado }}"</h1>
       <!-- Selector de período -->
       <select
         v-model="periodoSeleccionado"
-        @change="cambiarPeriodo"
-        class="border p-2 rounded mb-4"
+        @change="aplicarFiltros"
+        class="border border-border bg-background text-foreground p-2 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <option value="2025-2">2025-2</option>
         <option value="2026-0">2026-0</option>
         <option value="2026-1">2026-1</option>
+      </select>
+      <select
+        v-if="currentUserRole === 'admin'"
+        v-model="filtroDocenteId"
+        @change="aplicarFiltros"
+        class="border border-border bg-background text-foreground p-2 rounded mb-4 ml-2 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <option value="">Todos los docentes</option>
+        <option v-for="docente in docentes" :key="docente.id" :value="docente.id">
+          {{ docente.nombre }} {{ docente.apellido }}
+        </option>
       </select>
       <!-- Botón para mostrar el formulario -->
       <div class="flex justify-end mb-4">
@@ -104,47 +128,73 @@ function cambiarPeriodo() {
           @click="mostrarFormulario = !mostrarFormulario"
           class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
         >
-          + Agregar curso
+          {{ mostrarFormulario ? 'Ocultar formulario' : 'Agregar curso' }}
         </button>
       </div>
-      <!-- Formulario para agregar curso -->
+      <!-- Formulario -->
       <form
         v-if="mostrarFormulario"
         @submit.prevent="agregarCurso"
-        class="bg-white p-4 rounded shadow mb-6 flex flex-col gap-2 max-w-md mx-auto"
+        class="bg-card text-foreground p-6 rounded-xl shadow-sm border border-border mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto"
       >
-        <input v-model="nuevoCurso.nombre" placeholder="Nombre del curso" class="border p-2 rounded" required />
-        <input v-model="nuevoCurso.codigo" placeholder="Código" class="border p-2 rounded" required />
-        <input v-model="nuevoCurso.descripcion" placeholder="Descripción" class="border p-2 rounded" />
-        <input v-model="nuevoCurso.creditos" type="number" placeholder="Créditos" class="border p-2 rounded" required />
-        <select v-model="nuevoCurso.nivel" class="border p-2 rounded" required>
-          <option value="pregrado">Pregrado</option>
-          <option value="postgrado">Postgrado</option>
-        </select>
-        <input v-model="nuevoCurso.modalidad" placeholder="Modalidad" class="border p-2 rounded" required />
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Nombre del curso</span>
+          <input v-model="nuevoCurso.nombre" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">C&oacute;digo</span>
+          <input v-model="nuevoCurso.codigo" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required />
+        </label>
+        <label class="md:col-span-2 flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Descripci&oacute;n</span>
+          <input v-model="nuevoCurso.descripcion" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Cr&eacute;ditos</span>
+          <input v-model="nuevoCurso.creditos" type="number" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Nivel</span>
+          <select v-model="nuevoCurso.nivel" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required>
+            <option value="pregrado">Pregrado</option>
+            <option value="postgrado">Postgrado</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Modalidad</span>
+          <input v-model="nuevoCurso.modalidad" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required />
+        </label>
         <!-- Selección de docente -->
-        <select v-model="nuevoCurso.docente_id" class="border p-2 rounded" required>
+        <select v-if="currentUserRole !== 'docente'" v-model="nuevoCurso.docente_id" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" required>
           <option value="">Seleccione un docente</option>
           <option v-for="docente in docentes" :key="docente.id" :value="docente.id">
             {{ docente.nombre }} {{ docente.apellido }}
           </option>
         </select>
-        <select v-model="nuevoCurso.responsable_id" class="border p-2 rounded">
+        <input v-else class="border border-border p-2 rounded bg-muted text-foreground" :value="docentes.find(d => d.id === Number(nuevoCurso.docente_id))?.nombre ?? 'Mi usuario'" disabled />
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">Responsable</span>
+          <select v-model="nuevoCurso.responsable_id" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Seleccione responsable</option>
           <option v-for="responsable in responsables" :key="responsable.id" :value="responsable.id">
             {{ responsable.name }}
           </option>
         </select>
-        <input v-model="nuevoCurso.drive_url" placeholder="URL de Google Drive" class="border p-2 rounded" />
-      
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Guardar</button>
+        </label>
+        <label class="md:col-span-2 flex flex-col gap-1">
+          <span class="text-sm text-gray-600">URL de Google Drive</span>
+          <input v-model="nuevoCurso.drive_url" class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring" />
+        </label>
+        <div class="md:col-span-2 flex justify-end">
+          <button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90 transition">Guardar</button>
+        </div>
       </form>
       <!-- Grid de tarjetas -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         <div
           v-for="curso in cursos"
           :key="curso.id"
-          class="rounded-xl shadow-lg bg-white border relative overflow-hidden group hover:shadow-2xl transition-shadow min-h-[270px] flex flex-col"
+          class="rounded-xl shadow-lg bg-card text-foreground border border-border relative overflow-hidden group hover:shadow-2xl transition-shadow min-h-[270px] flex flex-col"
         >
           <!-- Banner superior -->
           <div class="h-20 bg-gradient-to-r from-green-600 to-blue-600 flex items-end px-4 pb-2 relative">
@@ -154,9 +204,9 @@ function cambiarPeriodo() {
             </span>
           </div>
           <div class="p-4 flex-1">
-            <div class="text-xs text-gray-500 mb-1">Docente: {{ curso.docente?.nombre ?? 'Sin asignar' }}</div>
-            <div class="text-xs text-gray-500 mb-1">Responsable: {{ curso.responsable?.name ?? 'Sin asignar' }}</div>
-            <div class="text-sm text-gray-700 mb-2 truncate">{{ curso.descripcion ?? 'Ver tus tareas' }}</div>
+            <div class="text-xs text-muted-foreground mb-1">Docente: {{ curso.docente?.nombre ?? 'Sin asignar' }}</div>
+            <div class="text-xs text-muted-foreground mb-1">Responsable: {{ curso.responsable?.name ?? 'Sin asignar' }}</div>
+            <div class="text-sm text-foreground mb-2 truncate">{{ curso.descripcion ?? 'Ver tus tareas' }}</div>
           </div>
           <!-- Botones -->
           <div class="flex justify-end gap-2 px-4 pb-4 border-t pt-2">
