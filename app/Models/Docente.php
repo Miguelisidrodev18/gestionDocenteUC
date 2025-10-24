@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory; // Importa el trait HasFactory
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Docente extends Model
 {
@@ -31,6 +32,11 @@ class Docente extends Model
     public function cursos(): HasMany
     {
         return $this->hasMany(Curso::class);
+    }
+
+    public function cursosColabora(): BelongsToMany
+    {
+        return $this->belongsToMany(Curso::class, 'curso_docente');
     }
 
     /**

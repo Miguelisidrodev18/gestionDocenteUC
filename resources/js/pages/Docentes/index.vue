@@ -40,9 +40,12 @@ const deleteDocente = (id: number) => {
 <template>  
   <Head title="Docentes" />
   <AppLayout :breadcrumbs="breadcrumbs"> 
-    <!-- Mostrar mensaje de Ã©xito -->
+    <!-- Mensajes flash -->
     <div v-if="$page.props.flash && $page.props.flash.success" class="bg-green-100 text-green-800 p-2 rounded mb-4">
       {{ $page.props.flash.success }}
+    </div>
+    <div v-if="$page.props.flash && $page.props.flash.error" class="bg-red-100 text-red-800 p-2 rounded mb-4">
+      {{ $page.props.flash.error }}
     </div>
 
     <div class="flex h-full flex-1 flex-col gap-9 rounded-xl p-4">

@@ -67,10 +67,18 @@ class DocenteController extends Controller
 
         // Guardar archivos si existen
         if ($request->hasFile('cv_personal')) {
-            $validated['cv_personal'] = $request->file('cv_personal')->store('cv', 'public');
+            $file = $request->file('cv_personal');
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+            $base = trim((string) $request->input('cv_personal_nombre')) ?: 'cv-personal';
+            $name = \Illuminate\Support\Str::slug(pathinfo($base, PATHINFO_FILENAME)).($ext?'.'.$ext:'pdf');
+            $validated['cv_personal'] = $file->storeAs('cv', $name, 'public');
         }
         if ($request->hasFile('cv_sunedu')) {
-            $validated['cv_sunedu'] = $request->file('cv_sunedu')->store('cv', 'public');
+            $file = $request->file('cv_sunedu');
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+            $base = trim((string) $request->input('cv_sunedu_nombre')) ?: 'cv-sunedu';
+            $name = \Illuminate\Support\Str::slug(pathinfo($base, PATHINFO_FILENAME)).($ext?'.'.$ext:'pdf');
+            $validated['cv_sunedu'] = $file->storeAs('cv', $name, 'public');
         }
 
         \App\Models\Docente::create($validated);
@@ -127,11 +135,19 @@ class DocenteController extends Controller
 
         // Manejar archivos
     if ($request->hasFile('cv_personal')) {
-        $validated['cv_personal'] = $request->file('cv_personal')->store('cv', 'public');
+        $file = $request->file('cv_personal');
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+        $base = trim((string) $request->input('cv_personal_nombre')) ?: 'cv-personal';
+        $name = \Illuminate\Support\Str::slug(pathinfo($base, PATHINFO_FILENAME)).($ext?'.'.$ext:'pdf');
+        $validated['cv_personal'] = $file->storeAs('cv', $name, 'public');
     }
 
     if ($request->hasFile('cv_sunedu')) {
-        $validated['cv_sunedu'] = $request->file('cv_sunedu')->store('cv', 'public');
+        $file = $request->file('cv_sunedu');
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
+        $base = trim((string) $request->input('cv_sunedu_nombre')) ?: 'cv-sunedu';
+        $name = \Illuminate\Support\Str::slug(pathinfo($base, PATHINFO_FILENAME)).($ext?'.'.$ext:'pdf');
+        $validated['cv_sunedu'] = $file->storeAs('cv', $name, 'public');
     }
 
     $docente->update($validated);
@@ -142,12 +158,19 @@ class DocenteController extends Controller
 
     public function destroy($id) 
     {       
-        $docente = Docente::findOrFail($id); 
-
         // Only non-docente may delete
         if (auth()->user()?->role === 'docente') {
             abort(403);
         }
+
+        $docente = Docente::withCount('cursos')->findOrFail($id);
+
+        if ($docente->cursos_count > 0) {
+            return redirect()
+                ->route('teachers.index')
+                ->with('error', 'No se puede eliminar: el docente tiene cursos asociados.');
+        }
+
         $docente->delete(); 
         return redirect()->route('teachers.index')->with('success', 'Docente eliminado correctamente.');
     } 

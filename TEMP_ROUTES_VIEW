@@ -26,8 +26,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified', 'role:docente,responsable'])->group(function () {
     Route::post('/cursos/{curso}/documents', [CourseDocumentController::class, 'store'])->name('cursos.documents.store');
     Route::post('/cursos/{curso}/evidencias', [EvidenciaController::class, 'store'])->name('cursos.evidencias.store');
-    Route::delete('/evidencias/{evidencia}', [EvidenciaController::class, 'destroy'])->name('evidencias.destroy');
-    Route::patch('/evidencias/{evidencia}', [EvidenciaController::class, 'update'])->name('evidencias.update');
 });
 
 // Checklist de cursos (solo responsables; admin permitido por el middleware personalizado)
@@ -45,21 +43,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/docents/{docent}',[DocenteController::class,'destroy'])->name('teachers.destroy');
 });
 
-// Cursos: index/show para todos los autenticados
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cursos',[CursoController::class,'index'])->name('cursos.index');
-    Route::get('/cursos/{id}', [CursoController::class,'show'])->name('cursos.show');
-    // JSON: cursos de un docente por periodo
-    Route::get('/docentes/{docente}/cursos', [CursoController::class, 'forDocente'])->name('docentes.cursos');
-});
-
-// Crear/editar/eliminar cursos: restringido a admin o responsable
-Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(function () {
     Route::get('/cursos/create',[CursoController::class,'create'])->name('cursos.create');
     Route::post('/cursos',[CursoController::class,'store'])->name('cursos.store');
     Route::get('/cursos/{id}/edit',[CursoController::class,'edit'])->name('cursos.edit');
+    Route::get('/cursos/{id}', [CursoController::class,'show'])->name('cursos.show');
     Route::put('/cursos/{id}', [CursoController::class, 'update'])->name('cursos.update');
     Route::delete('/cursos/{id}', [CursoController::class, 'destroy'])->name('cursos.destroy');
+    // (Deprecated duplicate) evidencias store handled above in role group
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -93,3 +85,4 @@ Route::middleware(['auth','verified'])->group(function () {
 */
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+

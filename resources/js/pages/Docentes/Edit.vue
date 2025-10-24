@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, onBeforeUnmount } from 'vue';
@@ -23,6 +23,8 @@ type FormFields = {
     especialidad: any;
     cv_personal: File | null;
     cv_sunedu: File | null;
+    cv_personal_nombre?: string;
+    cv_sunedu_nombre?: string;
     linkedin: any;
     estado: any;
     cip: any;
@@ -38,6 +40,8 @@ const form = ref<FormFields>({
     especialidad: props.docent.especialidad ?? '',
     cv_personal: null,
     cv_sunedu: null,
+    cv_personal_nombre: '',
+    cv_sunedu_nombre: '',
     linkedin: props.docent.linkedin ?? '',
     estado: props.docent.estado ?? 'activo',
     cip: props.docent.cip ?? '',
@@ -128,7 +132,7 @@ onBeforeUnmount(() => {
           <input v-model="form.email" type="email" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div>
-          <label>Teléfono</label>
+          <label>Tel?fono</label>
           <input v-model="form.telefono" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div>
@@ -137,16 +141,24 @@ onBeforeUnmount(() => {
         </div>
         <div>
           <label>CV Personal (PDF)</label>
-          <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
+          <div class="flex items-center gap-2">
+            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
+            <input v-model="form.cv_personal_nombre" placeholder="Nombre (sin extensi?n)" class="rounded border border-border bg-background text-foreground px-2 py-1" />
+          </div>
           <div v-if="cvPersonalUrl" class="mt-3">
             <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? props.docent.cv_personal?.split('/').pop() ?? 'cv_personal.pdf'" />
+          <div class="text-xs text-muted-foreground mt-1">Se guardar? como: <span class="font-medium">{{ (form.cv_personal_nombre ? form.cv_personal_nombre : (form.cv_personal as any)?.name?.replace(/\.[^.]+$/, "") || "cv-personal") }}.pdf</span></div>
           </div>
         </div>
         <div>
           <label>CV Sunedu (PDF)</label>
-          <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
+          <div class="flex items-center gap-2">
+            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
+            <input v-model="form.cv_sunedu_nombre" placeholder="Nombre (sin extensi?n)" class="rounded border border-border bg-background text-foreground px-2 py-1" />
+          </div>
           <div v-if="cvSuneduUrl" class="mt-3">
             <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? props.docent.cv_sunedu?.split('/').pop() ?? 'cv_sunedu.pdf'" />
+          <div class="text-xs text-muted-foreground mt-1">Se guardar? como: <span class="font-medium">{{ (form.cv_sunedu_nombre ? form.cv_sunedu_nombre : (form.cv_sunedu as any)?.name?.replace(/\.[^.]+$/, "") || "cv-sunedu") }}.pdf</span></div>
           </div>
         </div>
         <div>
@@ -164,10 +176,13 @@ onBeforeUnmount(() => {
           <label>CIP</label>
           <input v-model="form.cip" type="text" class="w-full rounded-md border border-border bg-background text-foreground px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <Button type="submit" class="bg-primary text-primary-foreground">Guardar</Button>
+      <Button type="submit" class="bg-primary text-primary-foreground">Guardar</Button>
       </form>
     </div>
   </AppLayout>
 </template>
+
+
+
 
 
