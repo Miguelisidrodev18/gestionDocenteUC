@@ -19,7 +19,7 @@ const filtroDocenteId = ref(page.props.filters?.docente_id ?? '');
 const sort = ref(page.props.filters?.sort ?? 'nombre');
 const dir = ref(page.props.filters?.dir ?? 'asc');
 const perPage = ref(page.props.filters?.per_page ?? 12);
-const soloMios = ref(!!page.props.filters?.mine);
+// Eliminado: opción "Solo mis cursos" ya no aplica.
 
 const nuevoCurso = ref({
   nombre: '', codigo: '', descripcion: '', creditos: '', nivel: 'pregrado',
@@ -49,7 +49,6 @@ function aplicarFiltros(extra: Record<string, any> = {}) {
     sort: sort.value,
     dir: dir.value,
     per_page: perPage.value,
-    mine: soloMios.value || undefined,
     ...extra,
   };
   if (currentUserRole === 'admin' && filtroDocenteId.value) params.docente_id = filtroDocenteId.value;
@@ -78,8 +77,18 @@ function agregarCurso() {
           <option value="2026-0">2026-0</option>
           <option value="2026-1">2026-1</option>
         </select>
-        <input v-model="search" @keyup.enter="aplicarFiltros({ page: 1 })" placeholder="Buscar código, nombre o docente" class="flex-1 min-w-[240px] border border-border bg-background text-foreground p-2 rounded" />
-        <label v-if="currentUserRole === 'docente'" class="flex items-center gap-2 text-sm"><input type="checkbox" v-model="soloMios" @change="aplicarFiltros({ page: 1 })"/> Solo mis cursos</label>
+        <input
+          v-model="search"
+          @keyup.enter="(currentUserRole === 'admin' || currentUserRole === 'responsable') && aplicarFiltros({ page: 1 })"
+          placeholder="Buscar código, nombre o docente"
+          class="flex-1 min-w-[240px] border border-border bg-background text-foreground p-2 rounded"
+        />
+        <button
+          v-if="currentUserRole === 'admin' || currentUserRole === 'responsable'"
+          @click="aplicarFiltros({ page: 1 })"
+          class="px-3 py-2 rounded border bg-primary text-primary-foreground hover:opacity-90 transition"
+          title="Buscar"
+        >Buscar</button>
         <select v-if="currentUserRole === 'admin'" v-model="filtroDocenteId" @change="aplicarFiltros" class="border border-border bg-background text-foreground p-2 rounded">
           <option value="">Todos los docentes</option>
           <option v-for="docente in docentes" :key="docente.id" :value="docente.id">{{ docente.nombre }} {{ docente.apellido }}</option>

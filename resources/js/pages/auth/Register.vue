@@ -30,19 +30,19 @@ const submit = () => {
         <form @submit.prevent="submit" class="flex flex-col gap-6">
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="name">Name</Label>
+                    <Label for="name" class="text-foreground">Name</Label>
                     <Input id="name" type="text" required autofocus :tabindex="1" autocomplete="name" v-model="form.name" placeholder="Full name" />
                     <InputError :message="form.errors.name" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="email" class="text-foreground">Email address</Label>
                     <Input id="email" type="email" required :tabindex="2" autocomplete="email" v-model="form.email" placeholder="email@example.com" />
                     <InputError :message="form.errors.email" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password">Password</Label>
+                    <Label for="password" class="text-foreground">Password</Label>
                     <Input
                         id="password"
                         type="password"
@@ -56,7 +56,7 @@ const submit = () => {
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">Confirm password</Label>
+                    <Label for="password_confirmation" class="text-foreground">Confirm password</Label>
                     <Input
                         id="password_confirmation"
                         type="password"
@@ -68,9 +68,14 @@ const submit = () => {
                     />
                     <InputError :message="form.errors.password_confirmation" />
                 </div>
-                <div>
-                    <label for="role" class="block text-sm font-medium text-gray-700">Rol</label>
-                    <select id="role" v-model="form.role" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                <div class="grid gap-2">
+                    <Label for="role" class="text-foreground">Rol</Label>
+                    <select
+                        id="role"
+                        v-model="form.role"
+                        required
+                        class="mt-1 block w-full rounded-md border border-border bg-background text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    >
                         <option value="admin">Administrador</option>
                         <option value="docente">Docente</option>
                         <option value="responsable">Responsable</option>
@@ -90,3 +95,26 @@ const submit = () => {
         </form>
     </AuthBase>
 </template>
+
+<style scoped>
+/* Mejor contraste en dark mode para el select y opciones seleccionadas */
+select option:checked {
+  background-color: #E9D5FF; /* purple-200: morado bajo */
+  color: #111827; /* gray-900 */
+}
+/* Firefox también usa :focus para resaltar opción activa en menú desplegable */
+select:focus option:checked {
+  background-color: #E9D5FF;
+}
+
+/* Preferencias en dark mode */
+:global(.dark) select {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+:global(.dark) select option:checked {
+  background-color: #C4B5FD; /* purple-300: morado suave para dark */
+  color: #0B1020; /* ajusta contraste en dark */
+}
+</style>

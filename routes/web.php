@@ -26,6 +26,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified', 'role:docente,responsable'])->group(function () {
     Route::post('/cursos/{curso}/documents', [CourseDocumentController::class, 'store'])->name('cursos.documents.store');
     Route::post('/cursos/{curso}/evidencias', [EvidenciaController::class, 'store'])->name('cursos.evidencias.store');
+    // Actas (formulario en vez de archivo)
+    Route::post('/cursos/{curso}/actas', [\App\Http\Controllers\ActaController::class, 'store'])->name('cursos.actas.store');
+    Route::patch('/actas/{acta}', [\App\Http\Controllers\ActaController::class, 'update'])->name('actas.update');
+    Route::delete('/actas/{acta}', [\App\Http\Controllers\ActaController::class, 'destroy'])->name('actas.destroy');
+    // Registro de notas e Informe Final
+    Route::post('/cursos/{curso}/registro-notas', [\App\Http\Controllers\RegistroNotasController::class, 'store'])->name('cursos.registro.store');
+    Route::delete('/registro-notas/{registroNota}', [\App\Http\Controllers\RegistroNotasController::class, 'destroy'])->name('cursos.registro.destroy');
+    Route::post('/cursos/{curso}/informe-final', [\App\Http\Controllers\InformeFinalController::class, 'store'])->name('cursos.informe_final.store');
+    Route::get('/cursos/{curso}/informe-final/preview', [\App\Http\Controllers\InformeFinalController::class, 'preview'])->name('cursos.informe_final.preview');
     Route::delete('/evidencias/{evidencia}', [EvidenciaController::class, 'destroy'])->name('evidencias.destroy');
     Route::patch('/evidencias/{evidencia}', [EvidenciaController::class, 'update'])->name('evidencias.update');
 });

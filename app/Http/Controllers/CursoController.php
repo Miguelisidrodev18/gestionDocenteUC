@@ -128,7 +128,15 @@ public function edit($id)
 
 public function show($id)
 {
-    $curso = Curso::with(['docente','responsable','modalidadRel.area','evidencias' => function($q){ $q->latest(); }])->findOrFail($id);
+    $baseWith = [
+        'docente','responsable','modalidadRel.area',
+        'evidencias' => function($q){ $q->latest(); },
+        'actas' => function($q){ $q->latest(); },
+    ];
+    $curso = Curso::with($baseWith)->findOrFail($id);
+    // Carga condicional de relaciones nuevas (evita error si falta migración)
+    try { if (\Illuminate\Support\Facades\Schema::hasTable('registro_notas')) { $curso->load('registroNotas'); } } catch (\Throwable $e) {}
+    try { if (\Illuminate\Support\Facades\Schema::hasTable('informe_finals')) { $curso->load('informeFinal'); } } catch (\Throwable $e) {}
     // Autorización: solo admin, responsable del curso o docente asignado/co-docente
     $user = request()->user();
     $allowed = false;
@@ -148,10 +156,52 @@ public function show($id)
     if (! $allowed) {
         abort(403, 'No autorizado para ver este curso');
     }
+    // Aggregation for registro de notas (totals by campus + averages)
+    $aggregate = [];
+    $registros = method_exists($curso, 'registroNotas') && $curso->relationLoaded('registroNotas') ? $curso->getRelation('registroNotas') : collect();
+    foreach ($registros as $r) {
+        $campus = $r->campus ?: 'General';
+        if (!isset($aggregate[$campus])) {
+            $aggregate[$campus] = [
+                'total_estudiantes' => 0,
+                'c1_aprobados' => 0,
+                'c1_desaprobados' => 0,
+                'c1_promedio_sum' => 0,
+                'c1_promedio_count' => 0,
+                'ep_aprobados' => 0,
+                'ep_desaprobados' => 0,
+                'ep_promedio_sum' => 0,
+                'ep_promedio_count' => 0,
+            ];
+        }
+        $aggregate[$campus]['total_estudiantes'] += (int) $r->total_estudiantes;
+        $aggregate[$campus]['c1_aprobados'] += (int) $r->c1_aprobados;
+        $aggregate[$campus]['c1_desaprobados'] += (int) $r->c1_desaprobados;
+        $aggregate[$campus]['c1_promedio_sum'] += (float) $r->c1_promedio;
+        $aggregate[$campus]['c1_promedio_count'] += 1;
+        $aggregate[$campus]['ep_aprobados'] += (int) $r->ep_aprobados;
+        $aggregate[$campus]['ep_desaprobados'] += (int) $r->ep_desaprobados;
+        $aggregate[$campus]['ep_promedio_sum'] += (float) $r->ep_promedio;
+        $aggregate[$campus]['ep_promedio_count'] += 1;
+    }
+    $aggregateFormatted = [];
+    foreach ($aggregate as $campus => $a) {
+        $aggregateFormatted[$campus] = [
+            'total_estudiantes' => $a['total_estudiantes'],
+            'c1_aprobados' => $a['c1_aprobados'],
+            'c1_porcentaje' => $a['total_estudiantes'] > 0 ? round(($a['c1_aprobados'] / max(1,$a['total_estudiantes']))*100,2) : 0,
+            'ep_aprobados' => $a['ep_aprobados'],
+            'ep_porcentaje' => $a['total_estudiantes'] > 0 ? round(($a['ep_aprobados'] / max(1,$a['total_estudiantes']))*100,2) : 0,
+            'c1_promedio' => $a['c1_promedio_count'] ? round($a['c1_promedio_sum']/$a['c1_promedio_count'],2) : 0,
+            'ep_promedio' => $a['ep_promedio_count'] ? round($a['ep_promedio_sum']/$a['ep_promedio_count'],2) : 0,
+        ];
+    }
+
     return Inertia::render('Cursos/Show', [
         'curso' => $curso,
         'requerimientos' => $curso->requerimientos(),
         'avance' => $curso->avance,
+        'registroAggregate' => $aggregateFormatted,
     ]);
 }
 public function destroy($id)
@@ -237,5 +287,6 @@ public function update(Request $request, $id)
         return response()->json($cursos);
     }
 }
+
 
 

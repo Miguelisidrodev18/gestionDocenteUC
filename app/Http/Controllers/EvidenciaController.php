@@ -21,6 +21,7 @@ class EvidenciaController extends Controller
             'semana' => 'nullable|integer|min:1',
             'nombre' => 'nullable|string|max:150',
             'observaciones' => 'nullable|string',
+            'nivel' => 'nullable|in:alto,medio,bajo',
         ]);
 
         // Authorization: reuse the same logic used for CourseDocument uploads
@@ -75,6 +76,7 @@ class EvidenciaController extends Controller
             'fecha_subida' => now(),
             'estado' => 'pendiente',
             'observaciones' => $request->input('observaciones'),
+            'nivel' => $request->input('nivel'),
         ]);
 
         return back()->with('success', 'Evidencia subida correctamente.');

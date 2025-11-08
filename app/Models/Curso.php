@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Curso extends Model
@@ -54,6 +55,21 @@ class Curso extends Model
         return $this->belongsTo(Modalidad::class, 'modalidad_id');
     }
 
+    public function actas(): HasMany
+    {
+        return $this->hasMany(Acta::class);
+    }
+
+    public function registroNotas(): HasMany
+    {
+        return $this->hasMany(RegistroNota::class);
+    }
+
+    public function informeFinal(): HasOne
+    {
+        return $this->hasOne(InformeFinal::class);
+    }
+
     public function docentesParticipantes(): BelongsToMany
     {
         return $this->belongsToMany(Docente::class, 'curso_docente');
@@ -91,11 +107,12 @@ class Curso extends Model
     {
         $req = $this->requerimientos();
         $counts = $this->evidencias()->selectRaw("tipo, COUNT(*) as total")->groupBy('tipo')->pluck('total','tipo');
+        $actaCount = (int) $this->actas()->count();
         $totalReq = 0; $cumplidos = 0;
         foreach ($req as $tipo => $data) {
             $required = (int) ($data['required'] ?? 0);
             $totalReq += $required;
-            $have = (int) ($counts[$tipo] ?? 0);
+            $have = $tipo === 'acta' ? $actaCount : (int) ($counts[$tipo] ?? 0);
             $cumplidos += min($have, $required);
         }
         if ($totalReq === 0) return 0;

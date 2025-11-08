@@ -13,6 +13,7 @@ class Evidencia extends Model
         'tipo',
         'archivo_path',
         'semana',
+        'nivel',
         'fecha_subida',
         'estado',
         'observaciones',
@@ -32,4 +33,3 @@ class Evidencia extends Model
         return $this->belongsTo(User::class);
     }
 }
-

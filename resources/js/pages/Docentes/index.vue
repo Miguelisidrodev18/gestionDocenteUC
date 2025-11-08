@@ -26,7 +26,7 @@ const deleteDocente = (id: number) => {
             onSuccess: () => {
                 // AquÃ­ puedes manejar la respuesta despuÃ©s de eliminar el docente
                 console.log('Docente eliminado con Ã©xito');
-                router.visit('/docents', {replace: true}); // Redirigir a la lista de docentes despuÃ©s de eliminar
+                router.visit('/docents', {replace: true}); // Redirigir a la lista de docentes despues de eliminar
             },
             onError: () => {
                 // AquÃ­ puedes manejar el error si la eliminaciÃ³n falla
@@ -68,10 +68,10 @@ const deleteDocente = (id: number) => {
             <TableHead class="text-center">Apellido</TableHead>
             <TableHead class="text-center">DNI</TableHead>
             <TableHead class="text-center">Email</TableHead>
-            <TableHead class="text-center">TelÃ©fono</TableHead>
+            <TableHead class="text-center">Teléfono</TableHead>
             <TableHead class="text-center">Especialidad</TableHead>
-            <TableHead class="text-center">CV Sunedu</TableHead>
             <TableHead class="text-center">CV Personal</TableHead>
+            <TableHead class="text-center">CV Sunedu</TableHead>
             <TableHead class="text-center">LinkedIn</TableHead>
             <TableHead class="text-center">Estado</TableHead>
             <TableHead class="text-center">CIP</TableHead>

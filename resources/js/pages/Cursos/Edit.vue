@@ -31,7 +31,7 @@ function actualizarCurso() {
   router.put(`/cursos/${id}`, payload, {
     onSuccess: () => {
       alert('Curso actualizado correctamente.');
-      router.reload(); // Recarga la pÃ¡gina para reflejar los cambios
+      router.reload(); // Recarga la pagina para reflejar los cambios
     }
   });
 }
