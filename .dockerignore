@@ -1,0 +1,14 @@
+node_modules
+vendor
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+tmp
+.git
+.gitignore
+.vscode
+DockerFile
+Laravel.session.sql
+TEMP_ROUTES_VIEW
+.env

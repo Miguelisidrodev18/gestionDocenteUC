@@ -1,0 +1,57 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gestion_docente_uc_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - gestion_docente_uc
+
+  web:
+    image: nginx:stable-alpine
+    container_name: gestion_docente_uc_web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - app
+    networks:
+      - gestion_docente_uc
+  mysql:
+    image: mysql:8.0
+    container_name: gestion_docente_uc_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: gestion_docente_uc
+      MYSQL_ROOT_PASSWORD: ""
+    ports:
+      - "3307:3307"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - gestion_docente_uc
+  
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: gestion_docente_uc_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: ""
+      mysel_allow_empty_password: "yes"
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+    networks:
+      - gestion_docente_uc
+volumes: 
+  db_data:
+#definicion de la red interna
+networks:
+  gestion_docente_uc:
+    driver: bridge #tipo de red:bridge (predeterminada), host, none
