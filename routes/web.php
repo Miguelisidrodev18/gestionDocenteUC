@@ -8,6 +8,7 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\EvidenciaController;
+use App\Http\Controllers\CVController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
@@ -64,6 +65,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Crear/editar/eliminar cursos: restringido a admin o responsable
 Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(function () {
+    Route::get('/cursos/asignaciones', [CursoController::class, 'assignments'])->name('cursos.assignments');
+    Route::post('/cursos/traer', [CursoController::class, 'importFromPrevious'])->name('cursos.import_previous');
+    Route::patch('/cursos/{curso}/docente-responsable', [CursoController::class, 'updateResponsableDocente'])->name('cursos.responsable.update');
     Route::get('/cursos/create',[CursoController::class,'create'])->name('cursos.create');
     Route::post('/cursos',[CursoController::class,'store'])->name('cursos.store');
     Route::get('/cursos/{id}/edit',[CursoController::class,'edit'])->name('cursos.edit');
@@ -100,5 +104,14 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::delete('/materiales/{material}',[MaterialController::class,'destroy'])->name('materiales.destroy'); 
 });
 */
+
+// Flujo de CV Docente (plantilla, generación automática y subida de versiones firmadas)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/docentes/cv/plantilla', [CVController::class, 'downloadTemplate'])->name('cv.plantilla');
+    Route::get('/docentes/{docente}/cv/generar', [CVController::class, 'generateFilled'])->name('cv.generar');
+    Route::post('/docentes/{docente}/cv/upload', [CVController::class, 'upload'])->name('cv.upload');
+    Route::get('/docentes/{docente}/cv/descargar/{cv}', [CVController::class, 'download'])->name('cv.download');
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

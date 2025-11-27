@@ -55,6 +55,24 @@ services:
       - mysql
     networks:
       - gestion_docente_uc
+  redis:
+    image: redis:alpine
+    container_name: gestion_docente_uc_redis
+    restart: unless-stopped
+    networks: [gestion_docente_uc]
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gestion_docente_uc_queue
+    working_dir: /var/www/html
+    command: php artisan queue:work --queue=default --sleep=3 --tries=1 --timeout=0
+    volumes:
+      - ./:/var/www/html
+    env_file: [.env]
+    depends_on: [app, redis, mysql]
+    networks: [gestion_docente_uc]
+
 volumes: 
   db_data:
 #definicion de la red interna

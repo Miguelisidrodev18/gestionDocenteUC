@@ -10,6 +10,29 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 class CursoController extends Controller
 {
+    public function assignments(Request $request)
+    {
+        $periodo = $request->get('periodo', '2025-2');
+        $user = $request->user();
+
+        $cursosQuery = Curso::with(['docente', 'docentesParticipantes', 'modalidadRel.area'])
+            ->where('periodo', $periodo);
+
+        if ($user && $user->isResponsable() && ! $user->isAdmin()) {
+            $cursosQuery->where('user_id', $user->id);
+        }
+
+        $cursos = $cursosQuery
+            ->orderBy('nombre')
+            ->get();
+
+        return Inertia::render('Cursos/AsignacionResponsables', [
+            'cursos' => $cursos,
+            'periodo' => $periodo,
+            'currentUserRole' => $user?->role,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $periodo = $request->get('periodo', '2025-2');
@@ -250,6 +273,121 @@ public function update(Request $request, $id)
 
     return redirect()->route('cursos.index')->with('success', 'Curso actualizado correctamente');
 }
+
+    public function updateResponsableDocente(Request $request, Curso $curso)
+    {
+        $request->validate([
+            'docente_id' => 'required|exists:docentes,id',
+        ]);
+
+        $user = $request->user();
+        $allowed = false;
+        if ($user) {
+            if ($user->isAdmin()) {
+                $allowed = true;
+            } elseif ($user->isResponsable() && $curso->user_id === $user->id) {
+                $allowed = true;
+            }
+        }
+
+        if (! $allowed) {
+            abort(403, 'No autorizado para actualizar el docente responsable de este curso');
+        }
+
+        $curso->docente_id = (int) $request->input('docente_id');
+        $curso->save();
+
+        $curso->docentesParticipantes()->syncWithoutDetaching([$curso->docente_id]);
+
+        return back()->with('success', 'Docente responsable actualizado correctamente');
+    }
+
+    /**
+     * Copia cursos desde el último periodo disponible al periodo indicado.
+     * Solo se copian los cursos (sin documentos). Por compatibilidad con el
+     * esquema actual se conserva docente y responsable; si se requiere
+     * dejarlos nulos habría que volver las columnas nullable a nivel de BD.
+     */
+    public function importFromPrevious(Request $request)
+    {
+        $targetPeriodo = $request->input('periodo');
+        if (! $targetPeriodo) {
+            return back()->with('error', 'Debe seleccionar un periodo destino');
+        }
+
+        $user = $request->user();
+        if (! $user || (! $user->isAdmin() && ! $user->isResponsable())) {
+            abort(403);
+        }
+
+         // No permitir traer cursos si el periodo ya tiene al menos uno
+         $existingInTarget = Curso::where('periodo', $targetPeriodo)->exists();
+         if ($existingInTarget) {
+             return back()->with('info', 'El periodo seleccionado ya tiene cursos, no es posible traer más.');
+         }
+
+        // Determinar periodo origen: el inmediatamente anterior entre los existentes
+        $periodos = Curso::select('periodo')->distinct()->orderBy('periodo')->pluck('periodo')->values();
+        $sourcePeriodo = null;
+        $idx = $periodos->search($targetPeriodo);
+        if ($idx !== false && $idx > 0) {
+            $sourcePeriodo = $periodos[$idx - 1];
+        } elseif ($periodos->count() > 0) {
+            // Si el periodo destino aún no existe en la tabla,
+            // tomar el último periodo registrado como origen.
+            $sourcePeriodo = $periodos->last();
+        }
+
+        if (! $sourcePeriodo) {
+            return back()->with('error', 'No se encontró un periodo anterior para copiar cursos.');
+        }
+
+        // Cursos origen según permisos
+        $sourceQuery = Curso::where('periodo', $sourcePeriodo);
+        if ($user->isResponsable() && ! $user->isAdmin()) {
+            $sourceQuery->where('user_id', $user->id);
+        }
+
+        $sourceCursos = $sourceQuery->get();
+        if ($sourceCursos->isEmpty()) {
+            return back()->with('error', 'No hay cursos en el periodo anterior para copiar.');
+        }
+
+        $creados = 0;
+        foreach ($sourceCursos as $curso) {
+            // Evitar duplicar por mismo código y periodo destino
+            $already = Curso::where('codigo', $curso->codigo)
+                ->where('periodo', $targetPeriodo)
+                ->exists();
+            if ($already) {
+                continue;
+            }
+
+            Curso::create([
+                'nombre' => $curso->nombre,
+                'codigo' => $curso->codigo,
+                'descripcion' => $curso->descripcion,
+                'creditos' => $curso->creditos,
+                'nivel' => $curso->nivel,
+                'modalidad' => $curso->modalidad,
+                'modalidad_id' => $curso->modalidad_id,
+                // Por restricciones de esquema mantenemos docente y responsable;
+                // si más adelante se vuelven nullable se pueden limpiar aquí.
+                'docente_id' => $curso->docente_id,
+                'drive_url' => null,
+                'user_id' => $curso->user_id,
+                'periodo' => $targetPeriodo,
+                'periodo_academico' => $curso->periodo_academico,
+            ]);
+            $creados++;
+        }
+
+        if (! $creados) {
+            return back()->with('info', 'Ya existen cursos para este periodo con los mismos códigos.');
+        }
+
+        return back()->with('success', "Se copiaron {$creados} curso(s) desde el periodo {$sourcePeriodo}.");
+    }
 
     /**
      * JSON: cursos del docente (principal o co-docente) por periodo.

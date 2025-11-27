@@ -20,6 +20,7 @@ class Docente extends Model
         'especialidad',
         'cv_sunedu',
         'cv_personal',
+        'cul',
         'linkedin',
         'estado',
         'cip',
@@ -37,6 +38,11 @@ class Docente extends Model
     public function cursosColabora(): BelongsToMany
     {
         return $this->belongsToMany(Curso::class, 'curso_docente');
+    }
+
+    public function cvDocuments(): HasMany
+    {
+        return $this->hasMany(CvDocument::class);
     }
 
     /**

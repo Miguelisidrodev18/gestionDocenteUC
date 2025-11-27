@@ -36,6 +36,10 @@ onMounted(() => {
 const cursosList = computed(() => (cursosProp?.data ? cursosProp.data : cursosProp) || []);
 const cursosLinks = computed(() => cursosProp?.links ?? []);
 const cursosSinModalidad = computed(() => cursosList.value.filter((c:any) => !c.modalidad_id));
+const puedeTraerCursos = computed(() => {
+  if (!(currentUserRole === 'admin' || currentUserRole === 'responsable')) return false;
+  return cursosList.value.length === 0;
+});
 
 function verCurso(id: number) { router.get(`/cursos/${id}`); }
 function editarCurso(id: number) { router.get(`/cursos/${id}/edit`); }
@@ -65,6 +69,13 @@ function agregarCurso() {
   if (!payload.responsable_id) delete payload.responsable_id;
   router.post('/cursos', payload, { onSuccess: () => { mostrarFormulario.value = false; router.reload(); } });
 }
+
+function traerCursosDesdePeriodoAnterior() {
+  router.post('/cursos/traer', { periodo: periodoSeleccionado.value }, {
+    preserveScroll: true,
+    onSuccess: () => router.reload(),
+  });
+}
 </script>
 
 <template>
@@ -77,6 +88,17 @@ function agregarCurso() {
           <option value="2026-0">2026-0</option>
           <option value="2026-1">2026-1</option>
         </select>
+        <button
+          v-if="puedeTraerCursos"
+          type="button"
+          class="inline-flex items-center gap-1 px-3 py-2 rounded-md border border-purple-400 bg-purple-50 text-xs font-medium text-purple-700 hover:bg-purple-100 hover:border-purple-500 transition"
+          @click="traerCursosDesdePeriodoAnterior"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" class="w-4 h-4">
+            <path d="M10 4v12M4 10h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>Traer curso</span>
+        </button>
         <input
           v-model="search"
           @keyup.enter="(currentUserRole === 'admin' || currentUserRole === 'responsable') && aplicarFiltros({ page: 1 })"

@@ -36,7 +36,7 @@ const form = ref({
     cv_personal: null,
     cv_sunedu: null,
     linkedin: '',
-    estado: 'activo',
+    estado: 'habilitado',
     cip: '',
 });
 
@@ -44,6 +44,23 @@ const errors = ref<Record<string, string[]>>({}); // Para almacenar los errores 
 
 const cvPersonalUrl = ref<string | null>(null);
 const cvSuneduUrl = ref<string | null>(null);
+
+const cvPersonalInput = ref<HTMLInputElement | null>(null);
+const cvSuneduInput = ref<HTMLInputElement | null>(null);
+
+// Toast simple para feedback de archivos
+const showToast = ref(false);
+const toastMsg = ref('');
+const toastType = ref<'success' | 'error'>('success');
+
+const toast = (msg: string, type: 'success' | 'error' = 'success') => {
+    toastMsg.value = msg;
+    toastType.value = type;
+    showToast.value = true;
+    setTimeout(() => {
+        showToast.value = false;
+    }, 2500);
+};
 
 const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'cv_sunedu'>) => {
     const target = e.target as HTMLInputElement;
@@ -60,12 +77,34 @@ const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'c
                 URL.revokeObjectURL(cvPersonalUrl.value);
             }
             cvPersonalUrl.value = url;
+            toast('CV Personal listo para guardar.', 'success');
         } else if (key === 'cv_sunedu') {
             if (cvSuneduUrl.value?.startsWith('blob:')) {
                 URL.revokeObjectURL(cvSuneduUrl.value);
             }
             cvSuneduUrl.value = url;
+            toast('CV Sunedu listo para guardar.', 'success');
         }
+    }
+};
+
+const clearFile = (key: keyof Pick<FormType, 'cv_personal' | 'cv_sunedu'>) => {
+    if (key === 'cv_personal') {
+        if (cvPersonalUrl.value?.startsWith('blob:')) {
+            URL.revokeObjectURL(cvPersonalUrl.value);
+        }
+        cvPersonalUrl.value = null;
+        form.value.cv_personal = null;
+        delete errors.value.cv_personal;
+        toast('CV Personal eliminado del formulario.', 'success');
+    } else {
+        if (cvSuneduUrl.value?.startsWith('blob:')) {
+            URL.revokeObjectURL(cvSuneduUrl.value);
+        }
+        cvSuneduUrl.value = null;
+        form.value.cv_sunedu = null;
+        delete errors.value.cv_sunedu;
+        toast('CV Sunedu eliminado del formulario.', 'success');
     }
 };
 
@@ -80,7 +119,7 @@ const resetForm = () => {
         cv_personal: null,
         cv_sunedu: null,
         linkedin: '',
-        estado: 'activo',
+        estado: 'habilitado',
         cip: '',
     };
     if (cvPersonalUrl.value) URL.revokeObjectURL(cvPersonalUrl.value);
@@ -186,16 +225,116 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <label class="font-semibold">CV Personal (PDF)</label>
-            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_personal')" />
-            <div v-if="cvPersonalUrl" class="mt-3">
+            <input
+              ref="cvPersonalInput"
+              type="file"
+              accept="application/pdf"
+              @change="e => handleFileChange(e, 'cv_personal')"
+            />
+            <div v-if="cvPersonalUrl" class="mt-3 flex items-start gap-3">
               <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? 'cv_personal.pdf'" />
+              <div class="mt-1 flex gap-2 text-xs text-muted-foreground">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  title="Cambiar archivo"
+                  @click="() => cvPersonalInput?.click()"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
+                    <path
+                      d="M4 20h4l10.5-10.5-4-4L4 16v4Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8 text-red-600"
+                  title="Eliminar archivo"
+                  @click="() => clearFile('cv_personal')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
+                    <path
+                      d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </Button>
+              </div>
             </div>
           </div>
           <div>
             <label class="font-semibold">CV Sunedu (PDF)</label>
-            <input type="file" accept="application/pdf" @change="e => handleFileChange(e, 'cv_sunedu')" />
-            <div v-if="cvSuneduUrl" class="mt-3">
+            <input
+              ref="cvSuneduInput"
+              type="file"
+              accept="application/pdf"
+              @change="e => handleFileChange(e, 'cv_sunedu')"
+            />
+            <div v-if="cvSuneduUrl" class="mt-3 flex items-start gap-3">
               <PdfFileCard :url="cvSuneduUrl" :name="form.cv_sunedu?.name ?? 'cv_sunedu.pdf'" />
+              <div class="mt-1 flex gap-2 text-xs text-muted-foreground">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  title="Cambiar archivo"
+                  @click="() => cvSuneduInput?.click()"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
+                    <path
+                      d="M4 20h4l10.5-10.5-4-4L4 16v4Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8 text-red-600"
+                  title="Eliminar archivo"
+                  @click="() => clearFile('cv_sunedu')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
+                    <path
+                      d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </Button>
+              </div>
             </div>
           </div>
           <div>
@@ -203,10 +342,13 @@ onBeforeUnmount(() => {
             <input v-model="form.linkedin" type="text" placeholder="LinkedIn" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div>
-            <label class="font-semibold">Estado</label>
-            <select v-model="form.estado" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring">
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
+            <label class="font-semibold">Estado CIP</label>
+            <select
+              v-model="form.estado"
+              class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="habilitado">Habilitado</option>
+              <option value="no_habilitado">No habilitado</option>
             </select>
           </div>
           <div>
@@ -222,6 +364,13 @@ onBeforeUnmount(() => {
             </Link>
           </div>
         </form>
+      </div>
+      <div
+        v-if="showToast"
+        class="fixed bottom-4 right-4 px-4 py-2 rounded shadow text-sm"
+        :class="toastType === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'"
+      >
+        {{ toastMsg }}
       </div>
     </AppLayout>
   </div>
