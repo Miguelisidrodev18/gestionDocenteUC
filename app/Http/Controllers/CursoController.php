@@ -37,6 +37,9 @@ class CursoController extends Controller
     {
         $periodo = $request->get('periodo', '2025-2');
         $docenteFilter = $request->get('docente_id');
+        $modalidadFilter = $request->get('modalidad'); // texto: nombre/modalidad
+        $campusFilter = $request->get('campus');
+        $search = $request->get('q');
         $user = $request->user();
 
         $cursosQuery = Curso::with(['docente', 'responsable'])
@@ -62,13 +65,46 @@ class CursoController extends Controller
             }
         }
 
-        $cursos = $cursosQuery->with(['evidencias','modalidadRel.area'])->get();
+        if ($modalidadFilter) {
+            $cursosQuery->where(function ($q) use ($modalidadFilter) {
+                $term = '%'.$modalidadFilter.'%';
+                $q->where('modalidad', 'like', $term)
+                    ->orWhereHas('modalidadRel', function ($qm) use ($term) {
+                        $qm->where('nombre', 'like', $term);
+                    });
+            });
+        }
+
+        if ($campusFilter) {
+            $cursosQuery->whereHas('registroNotas', function ($q) use ($campusFilter) {
+                $q->where('campus', 'like', '%'.$campusFilter.'%');
+            });
+        }
+
+        if ($search) {
+            $cursosQuery->where(function ($q) use ($search) {
+                $term = '%'.$search.'%';
+                $q->where('codigo', 'like', $term)
+                    ->orWhere('nombre', 'like', $term)
+                    ->orWhereHas('docente', function ($qd) use ($term) {
+                        $qd->where('dni', 'like', $term)
+                            ->orWhere('nombre', 'like', $term)
+                            ->orWhere('apellido', 'like', $term);
+                    })
+                    ->orWhereHas('responsable', function ($qr) use ($term) {
+                        $qr->where('name', 'like', $term)
+                            ->orWhere('email', 'like', $term);
+                    });
+            });
+        }
+
+        $cursos = $cursosQuery->with(['evidencias','modalidadRel.area','registroNotas'])->get();
         $docentes = Docente::all();
         $responsables = User::whereIn('role', ['responsable', 'admin'])->get();
 
         // Organizar por área -> modalidad -> cursos
-        $areas = Area::with(['modalidades' => function($q) use ($user, $docenteFilter, $periodo) {
-            $q->with(['cursos' => function($qc) use ($user, $docenteFilter, $periodo) {
+        $areas = Area::with(['modalidades' => function($q) use ($user, $docenteFilter, $periodo, $modalidadFilter, $campusFilter, $search) {
+            $q->with(['cursos' => function($qc) use ($user, $docenteFilter, $periodo, $modalidadFilter, $campusFilter, $search) {
                 $qc->with(['docente','responsable'])
                    ->where('periodo', $periodo);
                 if ($user) {
@@ -80,6 +116,36 @@ class CursoController extends Controller
                     }
                 }
                 if ($docenteFilter) { $qc->where('docente_id', $docenteFilter); }
+                if ($modalidadFilter) {
+                    $qc->where(function ($qmod) use ($modalidadFilter) {
+                        $term = '%'.$modalidadFilter.'%';
+                        $qmod->where('modalidad', 'like', $term)
+                             ->orWhereHas('modalidadRel', function ($qm) use ($term) {
+                                 $qm->where('nombre', 'like', $term);
+                             });
+                    });
+                }
+                if ($campusFilter) {
+                    $qc->whereHas('registroNotas', function ($qcamp) use ($campusFilter) {
+                        $qcamp->where('campus', 'like', '%'.$campusFilter.'%');
+                    });
+                }
+                if ($search) {
+                    $qc->where(function ($qq) use ($search) {
+                        $term = '%'.$search.'%';
+                        $qq->where('codigo', 'like', $term)
+                            ->orWhere('nombre', 'like', $term)
+                            ->orWhereHas('docente', function ($qd) use ($term) {
+                                $qd->where('dni', 'like', $term)
+                                    ->orWhere('nombre', 'like', $term)
+                                    ->orWhere('apellido', 'like', $term);
+                            })
+                            ->orWhereHas('responsable', function ($qr) use ($term) {
+                                $qr->where('name', 'like', $term)
+                                    ->orWhere('email', 'like', $term);
+                            });
+                    });
+                }
             }]);
         }])->get();
 
@@ -91,6 +157,9 @@ class CursoController extends Controller
             'periodo' => $periodo,
             'filters' => [
                 'docente_id' => $docenteFilter,
+                'modalidad' => $modalidadFilter,
+                'campus' => $campusFilter,
+                'q' => $search,
             ],
             'currentDocenteId' => $user?->docente?->id,
             'currentUserRole' => $user?->role,
@@ -139,6 +208,7 @@ class CursoController extends Controller
 public function edit($id)
 {
     $curso = Curso::with(['docente', 'responsable'])->findOrFail($id);
+    $this->authorize('update', $curso);
     $docentes = Docente::all();
     $responsables = User::where('role', 'responsable')->get();
 
@@ -161,24 +231,7 @@ public function show($id)
     try { if (\Illuminate\Support\Facades\Schema::hasTable('registro_notas')) { $curso->load('registroNotas'); } } catch (\Throwable $e) {}
     try { if (\Illuminate\Support\Facades\Schema::hasTable('informe_finals')) { $curso->load('informeFinal'); } } catch (\Throwable $e) {}
     // Autorización: solo admin, responsable del curso o docente asignado/co-docente
-    $user = request()->user();
-    $allowed = false;
-    if ($user) {
-        if ($user->isAdmin()) {
-            $allowed = true;
-        } elseif ($user->isResponsable() && $curso->user_id === $user->id) {
-            $allowed = true;
-        } else {
-            $docenteId = $user->docente?->id;
-            if ($docenteId) {
-                $allowed = $curso->docente_id === $docenteId
-                    || $curso->docentesParticipantes()->where('docente_id', $docenteId)->exists();
-            }
-        }
-    }
-    if (! $allowed) {
-        abort(403, 'No autorizado para ver este curso');
-    }
+    $this->authorize('view', $curso);
     // Aggregation for registro de notas (totals by campus + averages)
     $aggregate = [];
     $registros = method_exists($curso, 'registroNotas') && $curso->relationLoaded('registroNotas') ? $curso->getRelation('registroNotas') : collect();
@@ -230,6 +283,7 @@ public function show($id)
 public function destroy($id)
 {
     $curso = Curso::findOrFail($id);
+    $this->authorize('update', $curso);
     $curso->delete();
 
     return redirect()->route('cursos.index')->with('success', 'Curso eliminado correctamente');
@@ -280,19 +334,7 @@ public function update(Request $request, $id)
             'docente_id' => 'required|exists:docentes,id',
         ]);
 
-        $user = $request->user();
-        $allowed = false;
-        if ($user) {
-            if ($user->isAdmin()) {
-                $allowed = true;
-            } elseif ($user->isResponsable() && $curso->user_id === $user->id) {
-                $allowed = true;
-            }
-        }
-
-        if (! $allowed) {
-            abort(403, 'No autorizado para actualizar el docente responsable de este curso');
-        }
+        $this->authorize('assignResponsible', $curso);
 
         $curso->docente_id = (int) $request->input('docente_id');
         $curso->save();

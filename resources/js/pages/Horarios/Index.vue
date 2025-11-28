@@ -17,6 +17,7 @@ type Meeting = {
 const page = usePage();
 const meetings = computed<Meeting[]>(() => page.props.meetings ?? []);
 const cursos = computed<any[]>(() => page.props.cursos ?? []);
+const flash: any = (page as any).props.flash ?? {};
 
 const today = new Date();
 const currentMonth = ref(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -105,6 +106,10 @@ function eventsForDay(d: Date) {
           <span class="font-medium">{{ monthLabel(currentMonth) }}</span>
           <button class="px-2 py-1 rounded border" @click="nextMonth">&#x203A;</button>
         </div>
+      </div>
+
+      <div v-if="flash?.warning" class="mb-3 rounded border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        {{ flash.warning }}
       </div>
 
       <div class="grid grid-cols-7 gap-px rounded-lg overflow-hidden border bg-border">

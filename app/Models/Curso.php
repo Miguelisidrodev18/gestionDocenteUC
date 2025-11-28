@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProgressService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,8 +22,14 @@ class Curso extends Model
         'docente_id',
         'drive_url',
         'user_id',
+        'sede_id',
+        'campus_id',
+        'area_id',
         'periodo',
+        'periodo_id',
         'periodo_academico',
+        'avance_cache',
+        'review_state',
     ];
 
     public function user(): BelongsTo
@@ -55,6 +62,26 @@ class Curso extends Model
         return $this->belongsTo(Modalidad::class, 'modalidad_id');
     }
 
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    public function campus(): BelongsTo
+    {
+        return $this->belongsTo(Campus::class);
+    }
+
+    public function areaCatalogo(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'area_id');
+    }
+
+    public function periodoAcademicoRel(): BelongsTo
+    {
+        return $this->belongsTo(PeriodoAcademico::class, 'periodo_id');
+    }
+
     public function actas(): HasMany
     {
         return $this->hasMany(Acta::class);
@@ -75,6 +102,11 @@ class Curso extends Model
         return $this->belongsToMany(Docente::class, 'curso_docente');
     }
 
+    public function assignment(): HasOne
+    {
+        return $this->hasOne(Assignment::class);
+    }
+
     public function userCanUpload($user): bool
     {
         if (! $user) return false;
@@ -88,34 +120,62 @@ class Curso extends Model
 
     public function requerimientos(): array
     {
-        $semanas = $this->modalidadRel?->duracion_semanas;
-        if (! $semanas) {
-            $mod = strtolower((string) $this->modalidad);
-            $semanas = str_contains($mod, 'semi') ? 8 : 16;
+        $cfg = config('requirements');
+        $mod = strtolower((string) $this->modalidad);
+        $mode = str_contains($mod, 'semi') ? 'semipresencial' : 'presencial';
+        $modeCfg = $cfg[$mode] ?? $cfg['presencial'];
+
+        $req = [];
+
+        // Actas de reunión
+        $actaRequired = (int) ($modeCfg['acta'] ?? 0);
+        if ($actaRequired > 0) {
+            $req['acta'] = ['required' => $actaRequired, 'max' => $actaRequired];
         }
 
-        return [
-            'acta' => ['required' => 2, 'max' => 2],
-            'guia' => ['required' => 6, 'max' => null],
-            'presentacion' => ['required' => $semanas, 'max' => $semanas],
-            'trabajo' => ['required' => 3, 'max' => 3],
-            'excel' => ['required' => 1, 'max' => 1],
-        ];
+        // Guias / presentaciones / trabajos (sumando por bloque si aplica)
+        $guiaRequired = (int) ($modeCfg['guia'] ?? 0);
+        $presentRequired = (int) ($modeCfg['presentacion'] ?? 0);
+        $trabajoRequired = (int) ($modeCfg['trabajo'] ?? 0);
+
+        if (isset($modeCfg['per_block'])) {
+            foreach ($modeCfg['per_block'] as $blockCfg) {
+                $guiaRequired += (int) ($blockCfg['guia'] ?? 0);
+                $presentRequired += (int) ($blockCfg['presentacion'] ?? 0);
+                $trabajoRequired += (int) ($blockCfg['trabajo'] ?? 0);
+            }
+        }
+
+        if ($guiaRequired > 0) {
+            $req['guia'] = ['required' => $guiaRequired, 'max' => null];
+        }
+        if ($presentRequired > 0) {
+            $req['presentacion'] = ['required' => $presentRequired, 'max' => $presentRequired];
+        }
+        if ($trabajoRequired > 0) {
+            $req['trabajo'] = ['required' => $trabajoRequired, 'max' => $trabajoRequired];
+        }
+
+        // Documentos finales: acta_final, registro, informe_final
+        $finales = $modeCfg['finales'] ?? [];
+        foreach ($finales as $key => $required) {
+            $required = (int) $required;
+            if ($required <= 0) {
+                continue;
+            }
+            $req[$key] = ['required' => $required, 'max' => $required];
+        }
+
+        return $req;
     }
 
     public function getAvanceAttribute(): int
     {
-        $req = $this->requerimientos();
-        $counts = $this->evidencias()->selectRaw("tipo, COUNT(*) as total")->groupBy('tipo')->pluck('total','tipo');
-        $actaCount = (int) $this->actas()->count();
-        $totalReq = 0; $cumplidos = 0;
-        foreach ($req as $tipo => $data) {
-            $required = (int) ($data['required'] ?? 0);
-            $totalReq += $required;
-            $have = $tipo === 'acta' ? $actaCount : (int) ($counts[$tipo] ?? 0);
-            $cumplidos += min($have, $required);
+        $cached = $this->attributes['avance_cache'] ?? null;
+        if ($cached !== null) {
+            return (int) $cached;
         }
-        if ($totalReq === 0) return 0;
-        return (int) round(($cumplidos / $totalReq) * 100);
+
+        return app(ProgressService::class)->recomputeForCourse($this->id);
     }
 };

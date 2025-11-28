@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory; // Importa el trait HasFa
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Docente extends Model
 {
@@ -59,5 +60,10 @@ class Docente extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function advisorProfile(): HasOne
+    {
+        return $this->hasOne(AdvisorProfile::class);
     }
 }

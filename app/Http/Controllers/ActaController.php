@@ -11,10 +11,7 @@ class ActaController extends Controller
     /** Store an acta (meeting minutes) for a course. */
     public function store(Request $request, Curso $curso)
     {
-        // Authorization: reuse same rule as evidencias/documents
-        if (! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes registrar actas para este curso.');
-        }
+        $this->authorize('create', [Acta::class, $curso]);
 
         $data = $request->validate([
             'numero' => 'nullable|string|max:20',
@@ -39,16 +36,15 @@ class ActaController extends Controller
         $acta->created_by = $request->user()->id;
         $acta->save();
 
+        event(new \App\Events\DocumentUpdated($curso->id));
+
         return back()->with('success', 'Acta registrada correctamente.');
     }
 
     /** Update an Acta minimal fields */
     public function update(Request $request, Acta $acta)
     {
-        $curso = $acta->curso;
-        if (! $curso || ! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes editar esta acta.');
-        }
+        $this->authorize('update', $acta);
 
         $data = $request->validate([
             'numero' => 'nullable|string|max:20',
@@ -71,18 +67,18 @@ class ActaController extends Controller
         $acta->fill($data);
         $acta->save();
 
+        event(new \App\Events\DocumentUpdated($acta->curso_id));
+
         return back()->with('success', 'Acta actualizada.');
     }
 
     /** Delete an Acta. */
     public function destroy(Request $request, Acta $acta)
     {
-        $curso = $acta->curso;
-        if (! $curso || ! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes eliminar esta acta.');
-        }
+        $this->authorize('update', $acta);
+        $cursoId = $acta->curso_id;
         $acta->delete();
+        event(new \App\Events\DocumentUpdated($cursoId));
         return back()->with('success', 'Acta eliminada.');
     }
 }
-

@@ -33,10 +33,12 @@ const auth = usePage().props.auth as AuthUser;
             <a href="/dashboard">Dashboard</a>
             <a href="/docents">Docentes</a>
             <a href="/cursos/checklist">Checklist</a>
+            <a href="/final">Final</a>
         </li>
         <li v-if="auth.user.role === 'responsable' || auth.user.role === 'docente'">
             <a href="/cursos/checklist">Checklist</a>
             <a href="/cursos">Cursos</a>
+            <a v-if="auth.user.role === 'responsable'" href="/final">Final</a>
         </li>
         <li v-if="auth.user.role === 'docente'">
             <a href="/cursos">Cursos</a>

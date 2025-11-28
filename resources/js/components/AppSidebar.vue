@@ -43,6 +43,24 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: '/cursos/checklist',
             icon: ClipboardCheck,
         });
+
+        items.push({
+            title: 'Final',
+            href: '/final',
+            icon: History,
+        });
+
+        items.push({
+            title: 'Responsabilidades',
+            href: '/responsabilidades',
+            icon: User,
+        });
+
+        items.push({
+            title: 'Catálogos',
+            href: '/catalogos',
+            icon: Folder,
+        });
     }
 
     items.push(
@@ -57,13 +75,8 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: History,
         },
         {
-            title: 'Materiales',
-            href: '/materiales',
-            icon: FolderOpenDot,
-        },
-        {
             title: 'Asesores y Jurados',
-            href: '/asesors',
+            href: '/asesores-jurados',
             icon: BookOpen,
         },
     );

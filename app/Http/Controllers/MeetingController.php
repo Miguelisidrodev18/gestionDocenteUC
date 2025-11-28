@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Curso;
-use App\Models\Docente;
 use App\Models\Meeting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,25 +48,67 @@ class MeetingController extends Controller
         ]);
 
         $user = $request->user();
-        $accessibleCourseIds = $this->accessibleCourseIds($user);
-        if (! in_array((int) $data['curso_id'], $accessibleCourseIds, true)) {
-            abort(403, 'No puedes crear reuniones para este curso.');
-        }
+        $curso = Curso::with(['docentesParticipantes'])->findOrFail((int) $data['curso_id']);
+        $this->authorize('create', [Meeting::class, $curso]);
 
         $data['created_by'] = $user->id;
+
+        $startAt = $data['start_at'];
+        $endAt = $data['end_at'];
+
+        // Advertencia de choque de horario (no bloqueante)
+        $docenteIds = collect();
+        if ($curso->docente_id) {
+            $docenteIds->push($curso->docente_id);
+        }
+        $docenteIds = $docenteIds
+            ->merge($curso->docentesParticipantes->pluck('id'))
+            ->unique()
+            ->filter()
+            ->values();
+
+        $warning = null;
+        if ($docenteIds->isNotEmpty()) {
+            $overlapExists = Meeting::whereHas('curso', function ($qc) use ($docenteIds) {
+                $qc->whereIn('docente_id', $docenteIds)
+                    ->orWhereHas('docentesParticipantes', function ($qd) use ($docenteIds) {
+                        $qd->whereIn('docente_id', $docenteIds);
+                    });
+            })
+                ->where('start_at', '<', $endAt)
+                ->where('end_at', '>', $startAt)
+                ->exists();
+
+            if ($overlapExists) {
+                $warning = 'Advertencia: hay otra reunión para alguno de los docentes en este horario.';
+            }
+        }
+
         $meeting = Meeting::create($data);
 
         // Notificar a los involucrados del curso
-        $curso = $meeting->curso()->with(['responsable', 'docente'])->first();
+        $curso = $meeting->curso()->with(['responsable', 'docente', 'docentesParticipantes.user'])->first();
         $notifiables = collect();
-        if ($curso?->responsable) { $notifiables->push($curso->responsable); }
-        if ($curso?->docente && $curso->docente->user) { $notifiables->push($curso->docente->user); }
+        if ($curso?->responsable) {
+            $notifiables->push($curso->responsable);
+        }
+        if ($curso?->docente && $curso->docente->user) {
+            $notifiables->push($curso->docente->user);
+        }
+        foreach ($curso->docentesParticipantes as $doc) {
+            if ($doc->user) {
+                $notifiables->push($doc->user);
+            }
+        }
         $notifiables = $notifiables->unique('id');
         if ($notifiables->isNotEmpty()) {
             Notification::send($notifiables, new MeetingScheduled($meeting));
         }
 
-        return back()->with('success', 'Reunión creada.');
+        return back()->with([
+            'success' => 'Reunión creada.',
+            'warning' => $warning,
+        ]);
     }
 
     /** Update an existing meeting. */
@@ -81,7 +122,7 @@ class MeetingController extends Controller
             'location' => 'nullable|string|max:150',
         ]);
 
-        $this->authorizeAccess($request->user(), $meeting);
+        $this->authorize('update', $meeting);
 
         $meeting->update($data);
 
@@ -91,7 +132,7 @@ class MeetingController extends Controller
     /** Delete a meeting. */
     public function destroy(Request $request, Meeting $meeting)
     {
-        $this->authorizeAccess($request->user(), $meeting);
+        $this->authorize('delete', $meeting);
 
         $meeting->delete();
         return back()->with('success', 'Reunión eliminada.');
@@ -99,7 +140,9 @@ class MeetingController extends Controller
 
     private function accessibleCourseIds($user): array
     {
-        if (! $user) return [];
+        if (! $user) {
+            return [];
+        }
         if ($user->isAdmin()) {
             return Curso::pluck('id')->all();
         }
@@ -112,23 +155,5 @@ class MeetingController extends Controller
         }
         return [];
     }
-
-    private function authorizeAccess($user, Meeting $meeting): void
-    {
-        $allowed = false;
-        if ($user->isAdmin()) {
-            $allowed = true;
-        } elseif ($user->isResponsable() && $meeting->curso && $meeting->curso->user_id === $user->id) {
-            $allowed = true;
-        } else {
-            $docenteId = $user->docente?->id;
-            if ($docenteId && $meeting->curso && $meeting->curso->docente_id === $docenteId) {
-                $allowed = $meeting->created_by === $user->id; // Docente sólo modifica/elimina si es creador
-            }
-        }
-
-        if (! $allowed) {
-            abort(403, 'No tienes acceso a esta reunión.');
-        }
-    }
 }
+

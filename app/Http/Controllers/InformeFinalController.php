@@ -5,14 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Curso;
 use App\Models\InformeFinal;
 use Illuminate\Http\Request;
+use App\Events\DocumentUpdated;
 
 class InformeFinalController extends Controller
 {
     public function store(Request $request, Curso $curso)
     {
-        if (! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes registrar el informe final para este curso.');
-        }
+        $this->authorize('create', [InformeFinal::class, $curso]);
 
         $data = $request->validate([
             'responsable' => 'nullable|string|max:150',
@@ -27,6 +26,8 @@ class InformeFinalController extends Controller
                 'created_by' => $request->user()->id,
             ])
         );
+
+        event(new DocumentUpdated($curso->id));
 
         return back()->with('success', 'Informe final guardado.');
     }

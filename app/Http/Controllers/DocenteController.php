@@ -14,33 +14,31 @@ class DocenteController extends Controller
     {
         $user = auth()->user();
 
-        if ($user && $user->role === 'docente') {
-            $own = Docente::where('user_id', $user->id)->get();
+        if (! $user) {
+            abort(403);
+        }
 
-            return Inertia::render('Docentes/index', [
-                'docents' => $own,
-            ]);
+        if ($user->isDocente()) {
+            $docentes = Docente::where('user_id', $user->id)->get();
+        } else {
+            $docentes = Docente::all();
         }
 
         return Inertia::render('Docentes/index', [
-            'docents' => Docente::all(),
+            'docents' => $docentes,
         ]);
     }
 
     public function create()
     {
-        if (auth()->user()?->role === 'docente') {
-            abort(403);
-        }
+        $this->authorize('create', Docente::class);
 
         return Inertia::render('Docentes/create');
     }
 
     public function store(Request $request)
     {
-        if (auth()->user()?->role === 'docente') {
-            abort(403);
-        }
+        $this->authorize('create', Docente::class);
 
         $validated = $request->validate([
             'nombre'      => 'required|string|max:255',
@@ -96,10 +94,7 @@ class DocenteController extends Controller
 
     public function edit(Docente $docent)
     {
-        $user = auth()->user();
-        if ($user && $user->role === 'docente' && $docent->user_id !== $user->id) {
-            abort(403);
-        }
+        $this->authorize('update', $docent);
 
         return Inertia::render('Docentes/Edit', [
             'docent' => $docent,
@@ -110,10 +105,7 @@ class DocenteController extends Controller
     {
         $docente = Docente::findOrFail($id);
 
-        $user = auth()->user();
-        if ($user && $user->role === 'docente' && $docente->user_id !== $user->id) {
-            abort(403);
-        }
+        $this->authorize('update', $docente);
 
         $validated = $request->validate([
             'nombre'      => 'required|string|max:255',
@@ -192,11 +184,8 @@ class DocenteController extends Controller
 
     public function destroy($id)
     {
-        if (auth()->user()?->role === 'docente') {
-            abort(403);
-        }
-
         $docente = Docente::withCount('cursos')->findOrFail($id);
+        $this->authorize('update', $docente);
 
         if ($docente->cursos_count > 0) {
             return redirect()

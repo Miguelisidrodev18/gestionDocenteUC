@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CourseDocument;
 use App\Models\Curso;
+use App\Events\DocumentUpdated;
 use App\Notifications\DocumentSubmitted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -26,9 +27,7 @@ class CourseDocumentController extends Controller
             abort(403, 'Debes tener un perfil de docente para cargar documentos.');
         }
 
-        if (! $curso->userCanUpload($user)) {
-            abort(403, 'No puedes subir documentos para este curso.');
-        }
+        $this->authorize('uploadEvidence', $curso);
 
         $uploadedFile = $request->file('document');
         $dir = 'course-documents';
@@ -57,6 +56,8 @@ class CourseDocumentController extends Controller
         if ($responsable) {
             Notification::send($responsable, new DocumentSubmitted($document));
         }
+
+        event(new DocumentUpdated($curso->id));
 
         return redirect()
             ->route('cursos.index')

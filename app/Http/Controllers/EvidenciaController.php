@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Curso;
 use App\Models\Evidencia;
+use App\Events\EvidenceUploaded;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,10 +25,7 @@ class EvidenciaController extends Controller
             'nivel' => 'nullable|in:alto,medio,bajo',
         ]);
 
-        // Authorization: reuse the same logic used for CourseDocument uploads
-        if (! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes subir evidencias para este curso.');
-        }
+        $this->authorize('create', [Evidencia::class, $curso]);
 
         // Validate week range against modality duration if provided
         $weeks = $curso->modalidadRel?->duracion_semanas;
@@ -79,6 +77,8 @@ class EvidenciaController extends Controller
             'nivel' => $request->input('nivel'),
         ]);
 
+        event(new EvidenceUploaded($curso->id));
+
         return back()->with('success', 'Evidencia subida correctamente.');
     }
 
@@ -97,15 +97,13 @@ class EvidenciaController extends Controller
      */
     public function destroy(Request $request, Evidencia $evidencia)
     {
-        $curso = $evidencia->curso;
-        if (! $curso || ! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes eliminar esta evidencia.');
-        }
+        $this->authorize('delete', $evidencia);
 
         if ($evidencia->archivo_path && Storage::disk('public')->exists($evidencia->archivo_path)) {
             Storage::disk('public')->delete($evidencia->archivo_path);
         }
         $evidencia->delete();
+        event(new EvidenceUploaded($curso->id));
         return back()->with('success', 'Evidencia eliminada.');
     }
 
@@ -114,10 +112,7 @@ class EvidenciaController extends Controller
      */
     public function update(Request $request, Evidencia $evidencia)
     {
-        $curso = $evidencia->curso;
-        if (! $curso || ! $curso->userCanUpload($request->user())) {
-            abort(403, 'No puedes editar esta evidencia.');
-        }
+        $this->authorize('delete', $evidencia);
 
         $data = $request->validate([
             'nombre' => 'nullable|string',
@@ -167,6 +162,7 @@ class EvidenciaController extends Controller
         }
 
         $evidencia->save();
+        event(new EvidenceUploaded($curso->curso_id));
         return back()->with('success', 'Evidencia actualizada.');
     }
 }
