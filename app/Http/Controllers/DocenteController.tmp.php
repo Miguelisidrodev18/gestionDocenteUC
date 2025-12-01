@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\Role;
 use App\Models\Docente;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -56,9 +53,6 @@ class DocenteController extends Controller
             'linkedin'    => 'nullable|string|max:255',
             'estado'      => 'required|string|in:activo,inactivo',
             'cip'         => 'nullable|string|max:50',
-            'crear_usuario' => 'nullable|boolean',
-            'user_password' => 'nullable|required_if:crear_usuario,1|string|min:8|confirmed',
-            'user_password_confirmation' => 'nullable|string|min:8',
         ]);
 
         // CV personal
@@ -79,31 +73,13 @@ class DocenteController extends Controller
             $validated['cv_sunedu'] = $file->storeAs('cv', $name, 'public');
         }
 
-        // Certificado Ãšnico Laboral (CUL)
+        // Certificado Único Laboral (CUL)
         if ($request->hasFile('cul')) {
             $file = $request->file('cul');
             $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
             $base = trim((string) $request->input('cul_nombre')) ?: 'cul';
             $name = Str::slug(pathinfo($base, PATHINFO_FILENAME)).($ext ? '.'.$ext : '.pdf');
             $validated['cul'] = $file->storeAs('cul', $name, 'public');
-        }
-
-        // Crear usuario para el docente si se solicita y hay email
-        if ($request->boolean('crear_usuario') && ! empty($validated['email'])) {
-            $existingUser = User::where('email', $validated['email'])->first();
-
-            if (! $existingUser) {
-                $user = User::create([
-                    'name' => trim($validated['nombre'].' '.$validated['apellido']),
-                    'email' => $validated['email'],
-                    'password' => Hash::make($request->input('user_password')),
-                    'role' => Role::DOCENTE->value,
-                ]);
-            } else {
-                $user = $existingUser;
-            }
-
-            $validated['user_id'] = $user->id;
         }
 
         Docente::create($validated);
@@ -222,4 +198,3 @@ class DocenteController extends Controller
         return redirect()->route('teachers.index')->with('success', 'Docente eliminado correctamente.');
     }
 }
-

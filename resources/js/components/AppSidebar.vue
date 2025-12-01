@@ -12,9 +12,24 @@ import { LibraryBig } from 'lucide-vue-next';
 import { CalendarClock } from 'lucide-vue-next';
 import { History } from 'lucide-vue-next';
 import { FolderOpenDot } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const page = usePage<SharedData>();
+const unreadUpdates = ref<number>(0);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('/api/actualizaciones/counter', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (res.ok) {
+            const data = await res.json();
+            unreadUpdates.value = data.unread ?? 0;
+        }
+    } catch (e) {
+        // ignore
+    }
+});
 
 const mainNavItems = computed<NavItem[]>(() => {
     const role = page.props.auth?.user?.role ?? null;

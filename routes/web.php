@@ -13,6 +13,7 @@ use App\Http\Controllers\ResponsibilityController;
 use App\Http\Controllers\AdvisorPanelController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -70,12 +71,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Crear/editar/eliminar cursos: restringido a admin o responsable
 Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(function () {
-    // Módulo responsabilidades reemplaza la antigua vista de asignaciones
+    // Módulo responsabilidades
     Route::get('/responsabilidades', [ResponsibilityController::class, 'index'])->name('responsabilidades.index');
     Route::patch('/responsabilidades/{curso}', [ResponsibilityController::class, 'update'])->name('responsabilidades.update');
 
+    Route::post('/responsabilidades/{assignment}/aceptar', [ResponsibilityController::class, 'accept'])->name('responsabilidades.accept');
+    Route::post('/responsabilidades/{assignment}/rechazar', [ResponsibilityController::class, 'reject'])->name('responsabilidades.reject');
     Route::post('/cursos/traer', [CursoController::class, 'importFromPrevious'])->name('cursos.import_previous');
-    // Ruta antigua de actualización puntual del responsable (se mantiene por compatibilidad con otras vistas)
     Route::patch('/cursos/{curso}/docente-responsable', [CursoController::class, 'updateResponsableDocente'])->name('cursos.responsable.update');
     Route::get('/cursos/create', [CursoController::class, 'create'])->name('cursos.create');
     Route::post('/cursos', [CursoController::class, 'store'])->name('cursos.store');
@@ -83,7 +85,7 @@ Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(functio
     Route::put('/cursos/{id}', [CursoController::class, 'update'])->name('cursos.update');
     Route::delete('/cursos/{id}', [CursoController::class, 'destroy'])->name('cursos.destroy');
 
-    // Módulo Final (resultados agregados y oportunidades de mejora)
+    // Módulo Final
     Route::get('/final', [FinalController::class, 'index'])->name('final.index');
     Route::post('/final/opportunities', [FinalController::class, 'storeOpportunity'])->name('final.opportunities.store');
     Route::put('/final/opportunities/{opportunity}', [FinalController::class, 'updateOpportunity'])->name('final.opportunities.update');
@@ -143,14 +145,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/catalogos/bloques', [CatalogController::class, 'storeBloque']);
     Route::put('/catalogos/bloques/{bloque}', [CatalogController::class, 'updateBloque']);
-    Route::delete('/catalogos/bloques/{bloque}', [CatalogController::class, 'destroyBloque']);
+    Route::delete('/catalogos/bloques/{bloque>', [CatalogController::class, 'destroyBloque']);
 
     Route::post('/catalogos/requisitos', [CatalogController::class, 'storeRequisito']);
     Route::put('/catalogos/requisitos/{requisito}', [CatalogController::class, 'updateRequisito']);
     Route::delete('/catalogos/requisitos/{requisito}', [CatalogController::class, 'destroyRequisito']);
 });
 
-// Flujo de CV Docente (plantilla, generación automática y subida de versiones firmadas)
+// Actualizaciones (avisos internos)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/actualizaciones', [UpdateController::class, 'index'])->name('actualizaciones.index');
+    Route::post('/actualizaciones', [UpdateController::class, 'store'])->name('actualizaciones.store');
+    Route::put('/actualizaciones/{update}', [UpdateController::class, 'update'])->name('actualizaciones.update');
+    Route::delete('/actualizaciones/{update}', [UpdateController::class, 'destroy'])->name('actualizaciones.destroy');
+    Route::post('/actualizaciones/{update}/pin', [UpdateController::class, 'pin'])->name('actualizaciones.pin');
+    Route::post('/actualizaciones/{update}/unpin', [UpdateController::class, 'unpin'])->name('actualizaciones.unpin');
+    Route::post('/actualizaciones/{update}/read', [UpdateController::class, 'markRead'])->name('actualizaciones.read');
+    Route::get('/api/actualizaciones/counter', [UpdateController::class, 'counter'])->name('actualizaciones.counter');
+});
+
+// Flujo de CV Docente
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/docentes/cv/plantilla', [CVController::class, 'downloadTemplate'])->name('cv.plantilla');
     Route::get('/docentes/{docente}/cv/generar', [CVController::class, 'generateFilled'])->name('cv.generar');

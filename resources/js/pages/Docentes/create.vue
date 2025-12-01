@@ -24,9 +24,12 @@ type FormType = {
     linkedin: string;
     estado: string;
     cip: string;
+    crear_usuario: boolean;
+    user_password: string;
+    user_password_confirmation: string;
 };
 
-const form = ref({
+const form = ref<FormType>({
     nombre: '',
     apellido: '',
     dni: '',
@@ -38,6 +41,9 @@ const form = ref({
     linkedin: '',
     estado: 'habilitado',
     cip: '',
+    crear_usuario: false,
+    user_password: '',
+    user_password_confirmation: '',
 });
 
 const errors = ref<Record<string, string[]>>({}); // Para almacenar los errores de validacion
@@ -121,6 +127,9 @@ const resetForm = () => {
         linkedin: '',
         estado: 'habilitado',
         cip: '',
+        crear_usuario: false,
+        user_password: '',
+        user_password_confirmation: '',
     };
     if (cvPersonalUrl.value) URL.revokeObjectURL(cvPersonalUrl.value);
     if (cvSuneduUrl.value) URL.revokeObjectURL(cvSuneduUrl.value);
@@ -131,7 +140,9 @@ const resetForm = () => {
 const submit = () => {
     const data = new FormData();
     Object.entries(form.value).forEach(([key, value]) => {
-        if (value !== null) data.append(key, value as any);
+        if (value !== null) {
+            data.append(key, value as any);
+        }
     });
 
     console.log(form.value); // Verifica que form.value esta inicializado correctamente
@@ -354,6 +365,40 @@ onBeforeUnmount(() => {
           <div>
             <label class="font-semibold">CIP</label>
             <input v-model="form.cip" type="text" placeholder="CIP" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div class="border border-border rounded-md p-3 space-y-2">
+            <label class="font-semibold flex items-center gap-2">
+              <input
+                type="checkbox"
+                v-model="form.crear_usuario"
+                class="rounded border-border text-primary focus:ring-ring"
+              />
+              Crear cuenta de acceso para este docente
+            </label>
+            <p class="text-xs text-muted-foreground">
+              Si se activa, se creará un usuario con el email del docente y la contraseña indicada a continuación.
+            </p>
+            <div v-if="form.crear_usuario" class="space-y-2 mt-2">
+              <div>
+                <label class="font-semibold text-sm">Contraseña inicial</label>
+                <input
+                  v-model="form.user_password"
+                  type="password"
+                  placeholder="Contraseña para el docente"
+                  class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p v-if="errors.user_password" class="text-red-500 text-sm">{{ errors.user_password[0] }}</p>
+              </div>
+              <div>
+                <label class="font-semibold text-sm">Confirmar contraseña</label>
+                <input
+                  v-model="form.user_password_confirmation"
+                  type="password"
+                  placeholder="Repetir contraseña"
+                  class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
           </div>
           <div class="flex gap-4">
             <Button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90">

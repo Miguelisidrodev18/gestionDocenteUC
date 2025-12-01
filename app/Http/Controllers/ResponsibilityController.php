@@ -91,6 +91,9 @@ class ResponsibilityController extends Controller
             'campus_id' => $data['campus_id'] ?? null,
             'modalidad_docente' => $data['modalidad_docente'] ?? null,
             'assigned_at' => now(),
+            'status' => 'invitado',
+            'invited_by' => $request->user()->id,
+            'responded_at' => null,
         ]);
         $assignment->save();
 
@@ -102,7 +105,7 @@ class ResponsibilityController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
-        // Notificar al nuevo responsable
+        // Notificar al nuevo responsable (invitaci�n)
         $toUser = User::find($toUserId);
         if ($toUser) {
             Notification::send($toUser, new NewResponsibleAssigned($assignment));
@@ -110,5 +113,58 @@ class ResponsibilityController extends Controller
 
         return back()->with('success', 'Responsable actualizado correctamente.');
     }
-}
 
+    public function accept(Request $request, Assignment $assignment): RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user || $user->id !== $assignment->responsable_user_id) {
+            abort(403);
+        }
+
+        if ($assignment->status === 'aceptado') {
+            return back()->with('info', 'Ya hab�as aceptado esta designaci�n.');
+        }
+
+        if ($assignment->status === 'rechazado') {
+            return back()->with('info', 'Esta designaci�n ya fue rechazada.');
+        }
+
+        $assignment->update([
+            'status' => 'aceptado',
+            'responded_at' => now(),
+        ]);
+
+        // Al aceptar, se actualiza el responsable del curso
+        if ($assignment->curso) {
+            $assignment->curso->user_id = $assignment->responsable_user_id;
+            $assignment->curso->save();
+        }
+
+        return back()->with('success', 'Has aceptado la designaci�n como responsable del curso.');
+    }
+
+    public function reject(Request $request, Assignment $assignment): RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user || $user->id !== $assignment->responsable_user_id) {
+            abort(403);
+        }
+
+        if ($assignment->status === 'rechazado') {
+            return back()->with('info', 'Ya hab�as rechazado esta designaci�n.');
+        }
+
+        if ($assignment->status === 'aceptado') {
+            return back()->with('info', 'Esta designaci�n ya fue aceptada.');
+        }
+
+        $assignment->update([
+            'status' => 'rechazado',
+            'responded_at' => now(),
+        ]);
+
+        return back()->with('success', 'Has rechazado la designaci�n como responsable del curso.');
+    }
+}

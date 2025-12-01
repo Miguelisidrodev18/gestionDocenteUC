@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         // Ensure Docente exists for docente role
-        if ($user && $user->role === 'docente') {
+        if ($user && method_exists($user, 'isDocente') && $user->isDocente()) {
             $linked = Docente::where('user_id', $user->id)->first();
             if (! $linked) {
                 // Try link by email if exists
@@ -76,11 +76,11 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Redirect based on role
-        if ($user && $user->role === 'docente') {
+        if ($user && method_exists($user, 'isDocente') && $user->isDocente()) {
             return redirect()->intended(route('docentes.index', absolute: false));
         }
 
-        if ($user && $user->role === 'responsable') {
+        if ($user && method_exists($user, 'isResponsable') && $user->isResponsable()) {
             // Responsable users see checklist
             return redirect()->intended(route('cursos.checklist', absolute: false));
         }

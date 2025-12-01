@@ -15,11 +15,15 @@ class Assignment extends Model
         'modalidad_docente',
         'assigned_at',
         'email_sent_at',
+        'status',
+        'invited_by',
+        'responded_at',
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
         'email_sent_at' => 'datetime',
+        'responded_at' => 'datetime',
     ];
 
     public function curso(): BelongsTo
@@ -37,4 +41,3 @@ class Assignment extends Model
         return $this->hasMany(AssignmentLog::class);
     }
 }
-

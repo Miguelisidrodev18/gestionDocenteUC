@@ -7,6 +7,7 @@ const page = usePage<any>();
 const cursos = computed(() => page.props.cursos ?? []);
 const responsables = computed(() => page.props.responsables ?? []);
 const filters = computed(() => page.props.filters ?? {});
+const currentUserId = computed<number | null>(() => page.props.auth?.user?.id ?? null);
 
 const periodo = ref<string>(filters.value.periodo ?? '2025-2');
 
@@ -50,9 +51,39 @@ function guardar() {
   );
 }
 
-const estadoLabel = (curso: any) => (curso.assignment ? 'Asignado' : 'Pendiente');
-const estadoClase = (curso: any) =>
-  curso.assignment ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-800';
+function aceptarAsignacion(curso: any) {
+  if (!curso.assignment) return;
+  router.post(
+    `/responsabilidades/${curso.assignment.id}/aceptar`,
+    {},
+    { preserveScroll: true },
+  );
+}
+
+function rechazarAsignacion(curso: any) {
+  if (!curso.assignment) return;
+  router.post(
+    `/responsabilidades/${curso.assignment.id}/rechazar`,
+    {},
+    { preserveScroll: true },
+  );
+}
+
+const estadoLabel = (curso: any) => {
+  if (!curso.assignment) return 'Pendiente';
+  const status = curso.assignment.status ?? 'aceptado';
+  if (status === 'invitado') return 'Pendiente de aceptación';
+  if (status === 'rechazado') return 'Rechazado';
+  return 'Aceptado';
+};
+
+const estadoClase = (curso: any) => {
+  if (!curso.assignment) return 'bg-gray-300 text-gray-800';
+  const status = curso.assignment.status ?? 'aceptado';
+  if (status === 'invitado') return 'bg-amber-500 text-white';
+  if (status === 'rechazado') return 'bg-red-500 text-white';
+  return 'bg-emerald-600 text-white';
+};
 </script>
 
 <template>
@@ -117,13 +148,31 @@ const estadoClase = (curso: any) =>
             >
               {{ estadoLabel(curso) }}
             </span>
-            <button
-              type="button"
-              class="px-3 py-1 text-xs rounded border bg-primary text-primary-foreground hover:opacity-90"
-              @click="abrirModal(curso)"
-            >
-              Editar
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="curso.assignment && curso.assignment.status === 'invitado' && currentUserId && curso.assignment.responsable_user_id === currentUserId"
+                type="button"
+                class="px-3 py-1 text-xs rounded border bg-emerald-600 text-white hover:bg-emerald-700"
+                @click="aceptarAsignacion(curso)"
+              >
+                Aceptar
+              </button>
+              <button
+                v-if="curso.assignment && curso.assignment.status === 'invitado' && currentUserId && curso.assignment.responsable_user_id === currentUserId"
+                type="button"
+                class="px-3 py-1 text-xs rounded border bg-red-600 text-white hover:bg-red-700"
+                @click="rechazarAsignacion(curso)"
+              >
+                Rechazar
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1 text-xs rounded border bg-primary text-primary-foreground hover:opacity-90"
+                @click="abrirModal(curso)"
+              >
+                Editar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -217,4 +266,3 @@ const estadoClase = (curso: any) =>
     </div>
   </AppLayout>
 </template>
-

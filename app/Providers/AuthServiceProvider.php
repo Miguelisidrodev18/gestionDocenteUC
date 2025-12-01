@@ -19,6 +19,7 @@ use App\Models\PeriodoAcademico;
 use App\Models\TipoEvidencia;
 use App\Models\Bloque;
 use App\Models\RequisitoModalidad;
+use App\Models\Update;
 use App\Policies\CoursePolicy;
 use App\Models\AdvisorProfile;
 use App\Models\Panel;
@@ -61,6 +62,7 @@ class AuthServiceProvider extends ServiceProvider
         TipoEvidencia::class => CatalogPolicy::class,
         Bloque::class => CatalogPolicy::class,
         RequisitoModalidad::class => CatalogPolicy::class,
+        Update::class => \App\Policies\UpdatePolicy::class,
     ];
 
     /**
