@@ -168,24 +168,6 @@ function firstRegistro(curso: any) {
           <option value="2026-1">2026-1</option>
         </select>
 
-        <button
-          v-if="puedeTraerCursos"
-          type="button"
-          class="inline-flex items-center gap-1 px-3 py-2 rounded-md border border-purple-400 bg-purple-50 text-xs font-medium text-purple-700 hover:bg-purple-100 hover:border-purple-500 transition"
-          @click="traerCursosDesdePeriodoAnterior"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            class="w-4 h-4"
-          >
-            <path d="M10 4v12M4 10h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <span>Traer curso</span>
-        </button>
-
         <input
           v-model="search"
           @keyup.enter="aplicarFiltros({ page: 1 })"
@@ -395,9 +377,30 @@ function firstRegistro(curso: any) {
         </form>
       </div>
 
-      <!-- Vista tabla -->
-      <div v-if="vista === 'tabla'" class="rounded-lg border overflow-x-auto mb-8">
-        <table class="min-w-full text-sm">
+        <!-- Vista tabla -->
+        <div v-if="vista === 'tabla'" class="rounded-lg border overflow-x-auto mb-8">
+          <div
+            v-if="puedeTraerCursos"
+            class="w-full flex justify-center py-3 bg-muted/40 border-b border-border/60"
+          >
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-background/60 text-xs font-medium text-foreground/80 hover:bg-background hover:text-foreground transition"
+              @click="traerCursosDesdePeriodoAnterior"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4 opacity-70"
+              >
+                <path d="M10 4v12M4 10h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Traer cursos desde el periodo anterior</span>
+            </button>
+          </div>
+          <table class="min-w-full text-sm">
           <thead class="bg-muted text-foreground/80">
             <tr>
               <th class="text-left p-3">
@@ -646,4 +649,3 @@ function firstRegistro(curso: any) {
     </div>
   </AppLayout>
 </template>
-

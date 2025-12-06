@@ -4,10 +4,10 @@ import defaultTheme from 'tailwindcss/defaultTheme';
 export default {
     darkMode: ['class'],
     content: [
-        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
-        './resources/views/**/*.blade.php',
-        './resources/js/**/*.{vue,js,ts,jsx,tsx}',
+    './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+    './storage/framework/views/*.php',
+    './resources/views/**/*.blade.php',
+    './resources/js/**/*.{vue,js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {
@@ -20,46 +20,25 @@ export default {
                 sm: 'calc(var(--radius) - 4px)',
             },
             colors: {
-                background: 'hsl(var(--background))',
-                foreground: 'hsl(var(--foreground))',
-                card: {
-                    DEFAULT: 'hsl(var(--card))',
-                    foreground: 'hsl(var(--card-foreground))',
-                },
-                popover: {
-                    DEFAULT: 'hsl(var(--popover))',
-                    foreground: 'hsl(var(--popover-foreground))',
-                },
-                primary: {
-                    DEFAULT: 'hsl(var(--primary))',
-                    foreground: 'hsl(var(--primary-foreground))',
-                },
-                secondary: {
-                    DEFAULT: 'hsl(var(--secondary))',
-                    foreground: 'hsl(var(--secondary-foreground))',
-                },
-                muted: {
-                    DEFAULT: 'hsl(var(--muted))',
-                    foreground: 'hsl(var(--muted-foreground))',
-                },
-                accent: {
-                    DEFAULT: 'hsl(var(--accent))',
-                    foreground: 'hsl(var(--accent-foreground))',
-                },
-                destructive: {
-                    DEFAULT: 'hsl(var(--destructive))',
-                    foreground: 'hsl(var(--destructive-foreground))',
-                },
-                border: 'hsl(var(--border))',
-                input: 'hsl(var(--input))',
-                ring: 'hsl(var(--ring))',
-                chart: {
-                    1: 'hsl(var(--chart-1))',
-                    2: 'hsl(var(--chart-2))',
-                    3: 'hsl(var(--chart-3))',
-                    4: 'hsl(var(--chart-4))',
-                    5: 'hsl(var(--chart-5))',
-                },
+                /* nuevos tokens */
+                bg:      'rgb(var(--bg) / <alpha-value>)',
+                fg:      'rgb(var(--fg) / <alpha-value>)',
+                muted:   'rgb(var(--muted) / <alpha-value>)',
+                card:    'rgb(var(--card) / <alpha-value>)',
+                border:  'rgb(var(--border) / <alpha-value>)',
+                primary: 'rgb(var(--primary) / <alpha-value>)',
+                'primary-fg': 'rgb(var(--primary-fg) / <alpha-value>)',
+                accent:  'rgb(var(--accent) / <alpha-value>)',
+                success: 'rgb(var(--success) / <alpha-value>)',
+                warning: 'rgb(var(--warning) / <alpha-value>)',
+                danger:  'rgb(var(--danger) / <alpha-value>)',
+                focus:   'rgb(var(--focus) / <alpha-value>)',
+
+                /* alias para las clases que ya existen en tu código */
+                background: 'rgb(var(--bg) / <alpha-value>)',
+                foreground: 'rgb(var(--fg) / <alpha-value>)',
+                mutedfg:    'rgb(var(--muted) / <alpha-value>)',
+
                 sidebar: {
                     DEFAULT: 'hsl(var(--sidebar-background))',
                     foreground: 'hsl(var(--sidebar-foreground))',
@@ -69,9 +48,24 @@ export default {
                     'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
                     border: 'hsl(var(--sidebar-border))',
                     ring: 'hsl(var(--sidebar-ring))',
+                    },
+                },
+            borderColor: {
+                DEFAULT: 'rgb(var(--border) / 1)',
+            },
+            textColor: {
+                skin: {
+                    base: 'rgb(var(--fg))',
+                    muted: 'rgb(var(--muted))',
                 },
             },
-        },
+            backgroundColor: {
+                skin: {
+                    base: 'rgb(var(--bg))',
+                    card: 'rgb(var(--card))',
+                    },
+                },
+            },
     },
     plugins: [require('tailwindcss-animate')],
 };

@@ -40,15 +40,15 @@ const displayName = computed(() => {
 <template>
   <component
     :is="disabled ? 'div' : 'a'"
-    class="pdf-file-card inline-flex w-32 flex-col items-center gap-2 rounded-lg bg-slate-900/80 p-3 text-slate-100 shadow hover:bg-slate-900 transition-colors"
+    class="pdf-file-card inline-flex w-32 flex-col items-center gap-2 rounded-xl bg-card border border-border p-3 text-fg shadow hover:bg-bg transition"
     :href="disabled ? undefined : url"
     target="_blank"
     rel="noopener noreferrer"
   >
-    <div class="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-800">
-      <FileText class="h-10 w-10 text-teal-300" />
+    <div class="flex h-20 w-20 items-center justify-center rounded-lg bg-bg">
+      <FileText class="h-10 w-10 text-primary" />
     </div>
-    <span class="line-clamp-2 text-center text-xs font-medium text-slate-200">
+    <span class="line-clamp-2 text-center text-xs font-medium text-muted">
       {{ displayName }}
     </span>
   </component>
