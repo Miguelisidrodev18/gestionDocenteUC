@@ -45,7 +45,7 @@ html {
     --sidebar-border: 276 30% 26%;
     --sidebar-ring: 327 70% 60%;
     }
-}
+
     .dark {
         /* Modo oscuro con mejor legibilidad */
         --background: 279 45% 9%;
@@ -80,7 +80,7 @@ html {
         --sidebar-accent-foreground: 0 0% 100%;
         --sidebar-border: 279 35% 25%;
         --sidebar-ring: 327 70% 60%;
-        }
+    }
 }
 
 @layer base {

@@ -12,6 +12,7 @@ type ChecklistCourse = Cursos & {
   checklist_status?: ChecklistStatus;
   sede_label?: string | null;
   review_state?: string | null;
+  drive_url?: string | null;
 };
 
 interface ChecklistPageProps extends SharedData {
@@ -241,9 +242,16 @@ const changeState = (cursoId: number, action: 'pendiente' | 'observado' | 'valid
                     Validar
                   </button>
                 </div>
-                <Link :href="`/cursos/${curso.id}/edit`" class="text-primary hover:underline text-xs">
+                <a
+                  v-if="curso.drive_url"
+                  :href="curso.drive_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary hover:underline text-xs"
+                >
                   Revisar curso
-                </Link>
+                </a>
+                <span v-else class="text-xs text-muted-foreground">Sin Drive asignado</span>
               </div>
             </TableCell>
           </TableRow>

@@ -6,9 +6,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { Eye, EyeOff, LoaderCircle, Lock, Mail } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 defineProps<{
     status?: string;
@@ -20,6 +20,9 @@ const form = useForm({
     password: '',
     remember: false,
 });
+
+const page = usePage();
+const externalError = computed(() => (page.props.errors as Record<string, string>)?.email ?? '');
 
 const showToast = ref(false);
 const toastMsg = ref('');
@@ -48,6 +51,10 @@ const submit = () => {
 <template>
     <AuthBase title="Hola!" description="Inicia sesion para continuar">
         <Head title="Iniciar sesion" />
+
+        <div v-if="externalError" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {{ externalError }}
+        </div>
 
         <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
             {{ status }}
