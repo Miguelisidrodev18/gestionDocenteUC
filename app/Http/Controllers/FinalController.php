@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Curso;
 use App\Models\FinalResult;
 use App\Models\ImprovementOpportunity;
+use App\Models\PeriodoAcademico;
+use App\Models\Sede;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -62,13 +64,38 @@ class FinalController extends Controller
             ->get();
 
         // Cursos disponibles para crear oportunidades
-        $coursesQuery = Curso::where('periodo', $periodo)->orderBy('nombre');
-        $courses = $coursesQuery->get(['id', 'nombre', 'codigo']);
+        $coursesQuery = Curso::with(['responsable:id,name', 'assignment.responsable:id,name', 'sede:id,nombre'])
+            ->where('periodo', $periodo)
+            ->orderBy('nombre');
+        $courses = $coursesQuery->get()->map(function (Curso $curso) {
+            $responsables = collect();
+            if ($curso->responsable) {
+                $responsables->push($curso->responsable);
+            }
+            if ($curso->relationLoaded('assignment') && $curso->assignment && $curso->assignment->status === 'aceptado') {
+                $responsables->push($curso->assignment->responsable);
+            }
+            $responsables = $responsables
+                ->filter()
+                ->unique('id')
+                ->values()
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]);
+
+            return [
+                'id' => $curso->id,
+                'nombre' => $curso->nombre,
+                'codigo' => $curso->codigo,
+                'sede' => $curso->sede?->nombre,
+                'responsables' => $responsables,
+            ];
+        });
 
         return Inertia::render('Final/Index', [
             'periodo' => $periodo,
             'sede' => $sedeFilter,
             'sedes' => $sedes,
+            'sedesCatalog' => Sede::orderBy('nombre')->get(['id', 'nombre']),
+            'periodosCatalog' => PeriodoAcademico::orderByDesc('codigo')->get(['id', 'codigo', 'estado']),
             'summary' => $summary,
             'results' => $results,
             'opportunities' => $opportunities,
@@ -120,4 +147,3 @@ class FinalController extends Controller
         return back()->with('success', 'Oportunidad eliminada.');
     }
 }
-

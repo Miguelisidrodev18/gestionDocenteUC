@@ -1,7 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, onBeforeUnmount } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, onBeforeUnmount, computed } from 'vue';
 import PdfFileCard from '@/components/PdfFileCard.vue';
 import { Button } from '@/components/ui/button';
 import Swal from 'sweetalert2';
@@ -19,7 +19,6 @@ type FormType = {
     email: string;
     telefono: string;
     especialidad: string;
-    cv_personal: File | null;
     cv_sunedu: File | null;
     linkedin: string;
     estado: string;
@@ -29,6 +28,9 @@ type FormType = {
     user_password_confirmation: string;
 };
 
+const page: any = usePage();
+const especialidades = computed(() => page.props.especialidades ?? []);
+
 const form = ref<FormType>({
     nombre: '',
     apellido: '',
@@ -36,22 +38,19 @@ const form = ref<FormType>({
     email: '',
     telefono: '',
     especialidad: '',
-    cv_personal: null,
     cv_sunedu: null,
     linkedin: '',
-    estado: 'habilitado',
+    estado: 'activo',
     cip: '',
     crear_usuario: false,
     user_password: '',
     user_password_confirmation: '',
 });
 
-const errors = ref<Record<string, string[]>>({}); // Para almacenar los errores de validacion
+const errors = ref<Record<string, string[]>>({}); // Para almacenar los errores de v?lidaci?n
 
-const cvPersonalUrl = ref<string | null>(null);
 const cvSuneduUrl = ref<string | null>(null);
 
-const cvPersonalInput = ref<HTMLInputElement | null>(null);
 const cvSuneduInput = ref<HTMLInputElement | null>(null);
 
 // Toast simple para feedback de archivos
@@ -68,7 +67,7 @@ const toast = (msg: string, type: 'success' | 'error' = 'success') => {
     }, 2500);
 };
 
-const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'cv_sunedu'>) => {
+const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_sunedu'>) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
         const file = target.files[0];
@@ -78,13 +77,7 @@ const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'c
         }
         form.value[key] = file;
         const url = URL.createObjectURL(file);
-        if (key === 'cv_personal') {
-            if (cvPersonalUrl.value?.startsWith('blob:')) {
-                URL.revokeObjectURL(cvPersonalUrl.value);
-            }
-            cvPersonalUrl.value = url;
-            toast('CV Personal listo para guardar.', 'success');
-        } else if (key === 'cv_sunedu') {
+        if (key === 'cv_sunedu') {
             if (cvSuneduUrl.value?.startsWith('blob:')) {
                 URL.revokeObjectURL(cvSuneduUrl.value);
             }
@@ -94,16 +87,8 @@ const handleFileChange = (e: Event, key: keyof Pick<FormType, 'cv_personal' | 'c
     }
 };
 
-const clearFile = (key: keyof Pick<FormType, 'cv_personal' | 'cv_sunedu'>) => {
-    if (key === 'cv_personal') {
-        if (cvPersonalUrl.value?.startsWith('blob:')) {
-            URL.revokeObjectURL(cvPersonalUrl.value);
-        }
-        cvPersonalUrl.value = null;
-        form.value.cv_personal = null;
-        delete errors.value.cv_personal;
-        toast('CV Personal eliminado del formulario.', 'success');
-    } else {
+const clearFile = (key: keyof Pick<FormType, 'cv_sunedu'>) => {
+    if (key === 'cv_sunedu') {
         if (cvSuneduUrl.value?.startsWith('blob:')) {
             URL.revokeObjectURL(cvSuneduUrl.value);
         }
@@ -122,24 +107,51 @@ const resetForm = () => {
         email: '',
         telefono: '',
         especialidad: '',
-        cv_personal: null,
         cv_sunedu: null,
         linkedin: '',
-        estado: 'habilitado',
+        estado: 'activo',
         cip: '',
         crear_usuario: false,
         user_password: '',
         user_password_confirmation: '',
     };
-    if (cvPersonalUrl.value) URL.revokeObjectURL(cvPersonalUrl.value);
     if (cvSuneduUrl.value) URL.revokeObjectURL(cvSuneduUrl.value);
-    cvPersonalUrl.value = null;
     cvSuneduUrl.value = null;
 };
 
 const submit = () => {
+    if (form.value.crear_usuario) {
+        const password = form.value.user_password ?? '';
+        const confirmation = form.value.user_password_confirmation ?? '';
+        delete errors.value.user_password;
+        delete errors.value.user_password_confirmation;
+
+        if (!password) {
+            errors.value.user_password = ['La La contrase?a es obligatoria.'];
+            Swal.fire({
+                icon: 'error',
+                title: 'Corrige los errores',
+                text: 'Ingresa una contrase?a v?lida.',
+            });
+            return;
+        }
+
+        if (password !== confirmation) {
+            errors.value.user_password_confirmation = ['Las contrase?as no coinciden.'];
+            Swal.fire({
+                icon: 'error',
+                title: 'Corrige los errores',
+                text: 'La confirmaci?n de contrase?a no coincide.',
+            });
+            return;
+        }
+    }
     const data = new FormData();
     Object.entries(form.value).forEach(([key, value]) => {
+        if (key === 'crear_usuario') {
+            data.append(key, value ? '1' : '0');
+            return;
+        }
         if (value !== null) {
             data.append(key, value as any);
         }
@@ -160,13 +172,15 @@ const submit = () => {
             });
         },
         onError: (formErrors) => {
-            errors.value = Object.fromEntries(
+            const normalizedErrors = Object.fromEntries(
                 Object.entries(formErrors).map(([key, value]) => [key, Array.isArray(value) ? value : [String(value)]])
             );
+            errors.value = normalizedErrors;
+            const firstError = Object.values(normalizedErrors).flat()[0];
             Swal.fire({
                 icon: 'error',
                 title: 'Corrige los errores',
-                text: 'Revisa los campos marcados e intentalo nuevamente.',
+                text: firstError ?? 'Revisa los campos marcados e intentalo nuevamente.',
             });
         },
     });
@@ -174,11 +188,11 @@ const submit = () => {
 
 const confirmCancel = () => {
     Swal.fire({
-        title: 'Estas seguro?',
+        title: '?Est?s seguro?',
         text: 'Los cambios no guardados se perderan.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Si, cancelar',
+        confirmButtonText: 'S?, cancelar',
         cancelButtonText: 'No',
     }).then((result) => {
         if (result.isConfirmed) {
@@ -188,9 +202,6 @@ const confirmCancel = () => {
 };
 
 onBeforeUnmount(() => {
-    if (cvPersonalUrl.value?.startsWith('blob:')) {
-        URL.revokeObjectURL(cvPersonalUrl.value);
-    }
     if (cvSuneduUrl.value?.startsWith('blob:')) {
         URL.revokeObjectURL(cvSuneduUrl.value);
     }
@@ -231,65 +242,20 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <label class="font-semibold">Especialidad</label>
-            <input v-model="form.especialidad" type="text" placeholder="Especialidad" class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring" />
-            <p v-if="errors.especialidad" class="text-red-500 text-sm">{{ errors.especialidad[0] }}</p>
-          </div>
-          <div>
-            <label class="font-semibold">CV Personal (PDF)</label>
             <input
-              ref="cvPersonalInput"
-              type="file"
-              accept="application/pdf"
-              @change="e => handleFileChange(e, 'cv_personal')"
+              v-model="form.especialidad"
+              list="especialidades-list"
+              type="text"
+              placeholder="Especialidad"
+              class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <div v-if="cvPersonalUrl" class="mt-3 flex items-start gap-3">
-              <PdfFileCard :url="cvPersonalUrl" :name="form.cv_personal?.name ?? 'cv_personal.pdf'" />
-              <div class="mt-1 flex gap-2 text-xs text-muted-foreground">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  class="h-8 w-8"
-                  title="Cambiar archivo"
-                  @click="() => cvPersonalInput?.click()"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
-                    <path
-                      d="M4 20h4l10.5-10.5-4-4L4 16v4Z"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  class="h-8 w-8 text-red-600"
-                  title="Eliminar archivo"
-                  @click="() => clearFile('cv_personal')"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
-                    <path
-                      d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Z"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </Button>
-              </div>
-            </div>
+            <datalist id="especialidades-list">
+              <option v-for="e in especialidades" :key="e.id" :value="e.nombre" />
+            </datalist>
+            <p class="text-xs text-muted-foreground mt-1">
+              Si no existe, escribe una nueva y se agregara al catalogo.
+            </p>
+            <p v-if="errors.especialidad" class="text-red-500 text-sm">{{ errors.especialidad[0] }}</p>
           </div>
           <div>
             <label class="font-semibold">CV Sunedu (PDF)</label>
@@ -358,9 +324,10 @@ onBeforeUnmount(() => {
               v-model="form.estado"
               class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="habilitado">Habilitado</option>
-              <option value="no_habilitado">No habilitado</option>
+              <option value="activo">Habilitado</option>
+              <option value="inactivo">No habilitado</option>
             </select>
+            <p v-if="errors.estado" class="text-red-500 text-sm">{{ errors.estado[0] }}</p>
           </div>
           <div>
             <label class="font-semibold">CIP</label>
@@ -397,11 +364,12 @@ onBeforeUnmount(() => {
                   placeholder="Repetir contraseña"
                   class="w-full rounded-md border border-border bg-background text-foreground p-2 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+                <p v-if="errors.user_password_confirmation" class="text-red-500 text-sm">{{ errors.user_password_confirmation[0] }}</p>
               </div>
             </div>
           </div>
           <div class="flex gap-4">
-            <Button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90">
+            <Button type="submit" class="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600">
               Crear Docente
             </Button>
             <Link href="/docents" class="bg-destructive text-destructive-foreground px-4 py-2 rounded-md hover:opacity-90" @click.prevent="confirmCancel">

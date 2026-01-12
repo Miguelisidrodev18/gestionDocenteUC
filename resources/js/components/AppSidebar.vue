@@ -33,6 +33,7 @@ onMounted(async () => {
 
 const mainNavItems = computed<NavItem[]>(() => {
     const role = page.props.auth?.user?.role ?? null;
+    const canChecklist = Boolean(page.props.canChecklist);
 
     const items: NavItem[] = [
         {
@@ -52,23 +53,27 @@ const mainNavItems = computed<NavItem[]>(() => {
         },
     ];
 
-    if (role && (role === 'responsable' || role === 'admin')) {
+    if (role && (role === 'responsable' || role === 'admin' || role === 'docente')) {
+        items.push({
+            title: 'Responsabilidades',
+            href: '/responsabilidades',
+            icon: User,
+        });
+    }
+
+    if (canChecklist) {
         items.push({
             title: 'Checklist',
             href: '/cursos/checklist',
             icon: ClipboardCheck,
         });
+    }
 
+    if (role && role === 'admin') {
         items.push({
             title: 'Final',
             href: '/final',
             icon: History,
-        });
-
-        items.push({
-            title: 'Responsabilidades',
-            href: '/responsabilidades',
-            icon: User,
         });
 
         items.push({

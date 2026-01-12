@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Bloque;
 use App\Models\Modalidad;
+use App\Models\Bloque;
 use App\Models\TipoEvidencia;
 use Illuminate\Database\Seeder;
 
@@ -13,9 +13,9 @@ class CatalogSeeder extends Seeder
     {
         // Modalidades básicas (si ya existen, solo completar código/activo)
         $modalidades = [
-            ['codigo' => 'PRES', 'nombre' => 'Presencial', 'duracion_semanas' => 16],
-            ['codigo' => 'DIST', 'nombre' => 'Distancia', 'duracion_semanas' => 16],
-            ['codigo' => 'SEMI', 'nombre' => 'Semipresencial', 'duracion_semanas' => 16],
+            ['codigo' => 'PRES', 'nombre' => 'Presencial', 'duracion_semanas' => 16, 'estructura_duracion' => 'CONTINUA'],
+            ['codigo' => 'DIST', 'nombre' => 'Distancia', 'duracion_semanas' => 16, 'estructura_duracion' => 'CONTINUA'],
+            ['codigo' => 'SEMI', 'nombre' => 'Semipresencial', 'duracion_semanas' => 16, 'estructura_duracion' => 'BLOQUES', 'num_bloques' => 2, 'semanas_por_bloque' => 8],
         ];
 
         foreach ($modalidades as $data) {
@@ -24,6 +24,9 @@ class CatalogSeeder extends Seeder
                 [
                     'nombre' => $data['nombre'],
                     'duracion_semanas' => $data['duracion_semanas'],
+                    'estructura_duracion' => $data['estructura_duracion'] ?? 'CONTINUA',
+                    'num_bloques' => $data['num_bloques'] ?? null,
+                    'semanas_por_bloque' => $data['semanas_por_bloque'] ?? null,
                     // área y activo pueden ajustarse luego desde Catálogos
                     'area_id' => Modalidad::first()->area_id ?? 1,
                     'activo' => true,
@@ -57,7 +60,7 @@ class CatalogSeeder extends Seeder
             );
         }
 
-        // Bloques A y B
+        // Bloques A y B (semipresencial)
         Bloque::firstOrCreate(
             ['codigo' => 'A'],
             ['nombre' => 'Bloque A', 'semanas' => 8, 'activo' => true],
@@ -69,4 +72,3 @@ class CatalogSeeder extends Seeder
         );
     }
 }
-

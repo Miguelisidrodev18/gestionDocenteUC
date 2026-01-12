@@ -16,18 +16,6 @@ return new class extends Migration {
             $table->softDeletes();
         });
 
-        Schema::create('campus', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('sede_id')
-                ->constrained('sedes')
-                ->restrictOnDelete()
-                ->restrictOnUpdate();
-            $table->string('codigo')->unique();
-            $table->string('nombre');
-            $table->boolean('activo')->default(true);
-            $table->timestamps();
-            $table->softDeletes();
-        });
 
         Schema::create('periodos_academicos', function (Blueprint $table) {
             $table->id();
@@ -114,18 +102,10 @@ return new class extends Migration {
                     ->restrictOnDelete()
                     ->restrictOnUpdate();
             }
-            if (! Schema::hasColumn('cursos', 'campus_id')) {
-                $table->foreignId('campus_id')
-                    ->nullable()
-                    ->after('sede_id')
-                    ->constrained('campus')
-                    ->restrictOnDelete()
-                    ->restrictOnUpdate();
-            }
             if (! Schema::hasColumn('cursos', 'area_id')) {
                 $table->foreignId('area_id')
                     ->nullable()
-                    ->after('campus_id')
+                    ->after('sede_id')
                     ->constrained('areas')
                     ->restrictOnDelete()
                     ->restrictOnUpdate();
@@ -149,9 +129,6 @@ return new class extends Migration {
             }
             if (Schema::hasColumn('cursos', 'area_id')) {
                 $table->dropConstrainedForeignId('area_id');
-            }
-            if (Schema::hasColumn('cursos', 'campus_id')) {
-                $table->dropConstrainedForeignId('campus_id');
             }
             if (Schema::hasColumn('cursos', 'sede_id')) {
                 $table->dropConstrainedForeignId('sede_id');
@@ -186,8 +163,6 @@ return new class extends Migration {
         Schema::dropIfExists('bloques');
         Schema::dropIfExists('tipos_evidencia');
         Schema::dropIfExists('periodos_academicos');
-        Schema::dropIfExists('campus');
         Schema::dropIfExists('sedes');
     }
 };
-

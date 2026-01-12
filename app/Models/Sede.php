@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sede extends Model
 {
@@ -16,9 +15,5 @@ class Sede extends Model
         'activo',
     ];
 
-    public function campus(): HasMany
-    {
-        return $this->hasMany(Campus::class);
-    }
+    // Campus eliminado; sede no tiene relación hija adicional.
 }
-

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Role;
 use App\Models\Docente;
+use App\Models\Especialidad;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,7 +37,9 @@ class DocenteController extends Controller
     {
         $this->authorize('create', Docente::class);
 
-        return Inertia::render('Docentes/create');
+        return Inertia::render('Docentes/create', [
+            'especialidades' => Especialidad::orderBy('nombre')->get(['id', 'nombre']),
+        ]);
     }
 
     public function store(Request $request)
@@ -106,6 +109,14 @@ class DocenteController extends Controller
             $validated['user_id'] = $user->id;
         }
 
+        $especialidadNombre = trim((string) ($validated['especialidad'] ?? ''));
+        if ($especialidadNombre !== '') {
+            $especialidad = Especialidad::firstOrCreate(['nombre' => $especialidadNombre]);
+            $validated['especialidad'] = $especialidad->nombre;
+        } else {
+            $validated['especialidad'] = null;
+        }
+
         Docente::create($validated);
 
         return redirect()->route('teachers.index')->with('success', 'Docente creado correctamente');
@@ -122,6 +133,7 @@ class DocenteController extends Controller
 
         return Inertia::render('Docentes/Edit', [
             'docent' => $docent,
+            'especialidades' => Especialidad::orderBy('nombre')->get(['id', 'nombre']),
         ]);
     }
 
@@ -201,6 +213,14 @@ class DocenteController extends Controller
             $validated['cul'] = $file->storeAs('cul', $name, 'public');
         }
 
+        $especialidadNombre = trim((string) ($validated['especialidad'] ?? ''));
+        if ($especialidadNombre !== '') {
+            $especialidad = Especialidad::firstOrCreate(['nombre' => $especialidadNombre]);
+            $validated['especialidad'] = $especialidad->nombre;
+        } else {
+            $validated['especialidad'] = null;
+        }
+
         $docente->update($validated);
 
         return redirect()->route('teachers.index')->with('success', 'Docente actualizado correctamente');
@@ -222,4 +242,3 @@ class DocenteController extends Controller
         return redirect()->route('teachers.index')->with('success', 'Docente eliminado correctamente.');
     }
 }
-

@@ -14,11 +14,11 @@ use App\Models\RegistroNota;
 use App\Models\Area;
 use App\Models\Modalidad;
 use App\Models\Sede;
-use App\Models\Campus;
 use App\Models\PeriodoAcademico;
 use App\Models\TipoEvidencia;
-use App\Models\Bloque;
 use App\Models\RequisitoModalidad;
+use App\Models\Bloque;
+use App\Models\Especialidad;
 use App\Models\Update;
 use App\Policies\CoursePolicy;
 use App\Models\AdvisorProfile;
@@ -57,11 +57,11 @@ class AuthServiceProvider extends ServiceProvider
         Area::class => CatalogPolicy::class,
         Modalidad::class => CatalogPolicy::class,
         Sede::class => CatalogPolicy::class,
-        Campus::class => CatalogPolicy::class,
         PeriodoAcademico::class => CatalogPolicy::class,
         TipoEvidencia::class => CatalogPolicy::class,
-        Bloque::class => CatalogPolicy::class,
         RequisitoModalidad::class => CatalogPolicy::class,
+        Bloque::class => CatalogPolicy::class,
+        Especialidad::class => CatalogPolicy::class,
         Update::class => \App\Policies\UpdatePolicy::class,
     ];
 

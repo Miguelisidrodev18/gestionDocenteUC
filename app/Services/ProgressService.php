@@ -6,125 +6,86 @@ use App\Models\Curso;
 use App\Models\RequisitoModalidad;
 use App\Models\TipoEvidencia;
 use App\Models\FinalResult;
+use App\Services\ChecklistService;
 
 class ProgressService
 {
     public function recomputeForCourse(int $courseId): int
     {
         /** @var Curso $curso */
-        $curso = Curso::with(['evidencias', 'actas', 'registroNotas', 'informeFinal'])
+        $curso = Curso::with(['evidencias', 'actas', 'registroNotas', 'informeFinal', 'modalidadRel'])
             ->findOrFail($courseId);
 
-        $config = config('requirements');
-        $weights = $config['weights'] ?? [];
+        $avanceChecklist = $this->computeFromChecklist($courseId);
+        $curso->avance_cache = $avanceChecklist;
+        $curso->save();
+        $this->updateFinalResultsForCourse($curso);
+        return $avanceChecklist;
 
-        $requisitosCatalogo = null;
+        $requisitosCatalogo = collect();
         if ($curso->modalidad_id) {
             $requisitosCatalogo = RequisitoModalidad::with('tipo')
                 ->where('modalidad_id', $curso->modalidad_id)
                 ->get();
         }
 
-        $requiredActas = 0;
-        $requiredGuias = 0;
-        $requiredPresent = 0;
-        $requiredTrabajos = 0;
-        $finalesCfg = [];
-
-        if ($requisitosCatalogo && $requisitosCatalogo->isNotEmpty()) {
-            foreach ($requisitosCatalogo as $req) {
-                /** @var TipoEvidencia $tipo */
-                $tipo = $req->tipo;
-                if (! $tipo) {
-                    continue;
-                }
-                $codigo = $tipo->codigo;
-                if ($codigo === 'acta') {
-                    $requiredActas += $req->minimo;
-                } elseif ($codigo === 'guia') {
-                    $requiredGuias += $req->minimo;
-                } elseif ($codigo === 'presentacion') {
-                    $requiredPresent += $req->minimo;
-                } elseif ($codigo === 'trabajo') {
-                    $requiredTrabajos += $req->minimo;
-                } elseif (in_array($codigo, ['registro', 'informe_final', 'acta_final'], true)) {
-                    $finalesCfg[$codigo] = 1;
-                }
-            }
-        } else {
-            $mod = strtolower((string) $curso->modalidad);
-            $modeKey = str_contains($mod, 'semi') ? 'semipresencial' : 'presencial';
-            $modeCfg = $config[$modeKey] ?? $config['presencial'];
-
-            $requiredActas = (int) ($modeCfg['acta'] ?? 0);
-            $requiredGuias = (int) ($modeCfg['guia'] ?? 0);
-            $requiredPresent = (int) ($modeCfg['presentacion'] ?? 0);
-            $requiredTrabajos = (int) ($modeCfg['trabajo'] ?? 0);
-
-            if (isset($modeCfg['per_block'])) {
-                foreach ($modeCfg['per_block'] as $blockCfg) {
-                    $requiredGuias += (int) ($blockCfg['guia'] ?? 0);
-                    $requiredPresent += (int) ($blockCfg['presentacion'] ?? 0);
-                    $requiredTrabajos += (int) ($blockCfg['trabajo'] ?? 0);
-                }
-            }
-
-            $finalesCfg = $modeCfg['finales'] ?? [];
+        if ($requisitosCatalogo->isEmpty()) {
+            $avanceFallback = $this->computeFromChecklist($courseId);
+            $curso->avance_cache = $avanceFallback;
+            $curso->save();
+            $this->updateFinalResultsForCourse($curso);
+            return $avanceFallback;
         }
 
-        // Hechos
+        $manual = $curso->checklist_manual ?? [];
+        if (is_array($manual) && ! empty($manual)) {
+            $avanceManual = $this->computeFromChecklist($courseId);
+            $curso->avance_cache = $avanceManual;
+            $curso->save();
+            $this->updateFinalResultsForCourse($curso);
+            return $avanceManual;
+        }
+
         $actasDone = (int) $curso->actas->count();
-        $evCounts = $curso->evidencias
-            ->groupBy('tipo')
-            ->map->count();
+        $evByType = $curso->evidencias->groupBy('tipo');
 
-        $guiasDone = (int) ($evCounts['guia'] ?? 0);
-        $presentDone = (int) ($evCounts['presentacion'] ?? 0);
-        $trabajosDone = (int) ($evCounts['trabajo'] ?? 0);
-
-        // Finales: acta_final, registro, informe_final
-        $finalRequired = 0;
-        $finalDone = 0;
-        foreach ($finalesCfg as $key => $req) {
-            $req = (int) $req;
-            if ($req <= 0) {
-                continue;
-            }
-            $finalRequired++;
-            $has = false;
-            switch ($key) {
-                case 'acta_final':
-                    // Simplificación: se considera acta final si hay al menos 1 acta
-                    $has = $actasDone > 0;
-                    break;
-                case 'registro':
-                    $has = $curso->registroNotas && $curso->registroNotas->count() > 0;
-                    break;
-                case 'informe_final':
-                    $has = (bool) $curso->informeFinal;
-                    break;
-            }
-            if ($has) {
-                $finalDone++;
-            }
-        }
-
-        // Ratios por grupo (0..1)
-        $ratios = [
-            'actas' => $requiredActas > 0 ? min($actasDone / $requiredActas, 1) : 0,
-            'guias' => $requiredGuias > 0 ? min($guiasDone / $requiredGuias, 1) : 0,
-            'presentaciones' => $requiredPresent > 0 ? min($presentDone / $requiredPresent, 1) : 0,
-            'trabajos' => $requiredTrabajos > 0 ? min($trabajosDone / $requiredTrabajos, 1) : 0,
-            'finales' => $finalRequired > 0 ? min($finalDone / $finalRequired, 1) : 0,
-        ];
+        $numBloques = (int) ($curso->modalidadRel?->num_bloques ?? 0);
+        $weeksPerBlock = (int) ($curso->modalidadRel?->semanas_por_bloque ?? 0);
+        $useBlocks = ($curso->modalidadRel?->estructura_duracion === 'BLOQUES' && $numBloques > 0 && $weeksPerBlock > 0);
 
         $avance = 0.0;
-        foreach ($ratios as $group => $ratio) {
-            $weight = (float) ($weights[$group] ?? 0);
-            $avance += $weight * $ratio;
+
+        foreach ($requisitosCatalogo as $req) {
+            /** @var TipoEvidencia $tipo */
+            $tipo = $req->tipo;
+            if (! $tipo) {
+                continue;
+            }
+
+            $codigo = (string) $tipo->codigo;
+            $minimo = max(0, (int) $req->minimo);
+            $peso = max(0, (int) $req->peso);
+            $aplica = (string) ($req->aplica_a ?? 'CICLO');
+
+            $cumplimiento = 0.0;
+            if ($minimo == 0) {
+                $cumplimiento = 1.0;
+            } elseif ($aplica === 'POR_BLOQUE' && $useBlocks) {
+                $sum = 0.0;
+                for ($i = 1; $i <= $numBloques; $i++) {
+                    $entregados = $this->countForRequirement($codigo, $curso, $evByType, $actasDone, $i, $weeksPerBlock);
+                    $sum += min($entregados / $minimo, 1);
+                }
+                $cumplimiento = $sum / $numBloques;
+            } else {
+                $entregados = $this->countForRequirement($codigo, $curso, $evByType, $actasDone, null, null);
+                $cumplimiento = min($entregados / $minimo, 1);
+            }
+
+            $avance += $cumplimiento * $peso;
         }
 
-        $avancePercent = (int) round($avance * 100);
+        $avancePercent = (int) round(min($avance, 100));
 
         $curso->avance_cache = $avancePercent;
         $curso->save();
@@ -134,6 +95,63 @@ class ProgressService
         return $avancePercent;
     }
 
+    private function countForRequirement(
+        string $codigo,
+        Curso $curso,
+        $evByType,
+        int $actasDone,
+        ?int $blockIndex,
+        ?int $weeksPerBlock,
+    ): int {
+        if ($codigo === 'acta') {
+            return $actasDone;
+        }
+        if ($codigo === 'registro') {
+            return $curso->registroNotas ? (int) $curso->registroNotas->count() : 0;
+        }
+        if ($codigo === 'informe_final') {
+            return $curso->informeFinal ? 1 : 0;
+        }
+
+        $items = $evByType[$codigo] ?? collect();
+        if ($blockIndex && $weeksPerBlock) {
+            $start = ($blockIndex - 1) * $weeksPerBlock + 1;
+            $end = $blockIndex * $weeksPerBlock;
+            return (int) $items->filter(function ($ev) use ($start, $end) {
+                $week = (int) ($ev->semana ?? 0);
+                return $week >= $start && $week <= $end;
+            })->count();
+        }
+
+        return (int) $items->count();
+    }
+
+    private function computeFromChecklist(int $courseId): int
+    {
+        $status = app(ChecklistService::class)->statusForCourse($courseId);
+        if (! $status) {
+            return 0;
+        }
+
+        $tipos = TipoEvidencia::orderBy('codigo')->get(['codigo', 'cuenta_en_avance']);
+        $codes = $tipos->filter(fn ($t) => (bool) $t->cuenta_en_avance)->pluck('codigo')->all();
+        if (! count($codes)) {
+            $codes = $tipos->pluck('codigo')->all();
+        }
+
+        if (! count($codes)) {
+            return 0;
+        }
+
+        $cumplidos = 0;
+        foreach ($codes as $code) {
+            if (($status[$code] ?? 'pendiente') === 'cumplido') {
+                $cumplidos++;
+            }
+        }
+
+        return (int) round(($cumplidos / count($codes)) * 100);
+    }
     protected function updateFinalResultsForCourse(Curso $curso): void
     {
         $registros = $curso->registroNotas;

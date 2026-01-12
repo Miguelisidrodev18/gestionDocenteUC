@@ -36,7 +36,11 @@ class CoursePolicy
             return true;
         }
 
-        return $user->isResponsable() && $curso->user_id === $user->id;
+        if ($user->isResponsable() && $curso->user_id === $user->id) {
+            return true;
+        }
+
+        return $user->isDocente() && (int) $curso->user_id === (int) $user->id;
     }
 
     public function uploadEvidence(User $user, Curso $curso): bool
@@ -58,7 +62,10 @@ class CoursePolicy
      */
     public function changeState(User $user, Curso $curso): bool
     {
-        return $user->isAdmin() || $user->isResponsable();
+        if ($user->isAdmin() || $user->isResponsable()) {
+            return true;
+        }
+
+        return $user->isDocente() && (int) $curso->user_id === (int) $user->id;
     }
 }
-

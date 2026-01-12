@@ -42,9 +42,9 @@ const deleteDocente = (id: number) => {
     <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 bg-bg text-fg">
       <div class="flex">
         <Button
-          v-if="auth.user.role !== 'docente'"
+          v-if="auth.user.role === 'admin'"
           asChild
-          class="bg-primary text-primary-fg hover:opacity-90 active:opacity-100 px-4 py-2"
+          class="bg-red-600 text-white hover:bg-red-700 active:opacity-100 px-4 py-2"
         >
           <Link href="/docents/create">
             <CirclePlus /> Crear Docente
@@ -64,7 +64,7 @@ const deleteDocente = (id: number) => {
               <TableHead class="px-6 py-3 text-left text-fg">Email</TableHead>
               <TableHead class="px-6 py-3 text-left text-fg">Teléfono</TableHead>
               <TableHead class="px-6 py-3 text-left text-fg">Especialidad</TableHead>
-              <TableHead class="px-6 py-3 text-left text-fg">CV Personal</TableHead>
+              <TableHead class="px-6 py-3 text-left text-fg">CV Docente</TableHead>
               <TableHead class="px-6 py-3 text-left text-fg">CV Sunedu</TableHead>
               <TableHead class="px-6 py-3 text-left text-fg">CUL</TableHead>
               <TableHead class="px-6 py-3 text-left text-fg">LinkedIn</TableHead>
@@ -89,14 +89,30 @@ const deleteDocente = (id: number) => {
 
               <TableCell class="px-6 py-4">
                 <PdfFileCard
-                  v-if="docent.cv_personal"
-                  :url="'/storage/' + docent.cv_personal"
-                  :name="docent.cv_personal.split('/').pop() ?? 'cv_personal.pdf'"
+                  v-if="docent.cv_docente"
+                  :url="`/storage/${docent.cv_docente}`"
+                  name="cv_docente.pdf"
                 />
                 <span v-else class="text-muted text-xs">No disponible</span>
               </TableCell>
 
-              <!-- idem para cv_sunedu y cul -->
+              <TableCell class="px-6 py-4">
+                <PdfFileCard
+                  v-if="docent.cv_sunedu"
+                  :url="`/storage/${docent.cv_sunedu}`"
+                  :name="docent.cv_sunedu.split('/').pop() ?? 'cv_sunedu.pdf'"
+                />
+                <span v-else class="text-muted text-xs">No disponible</span>
+              </TableCell>
+
+              <TableCell class="px-6 py-4">
+                <PdfFileCard
+                  v-if="docent.cul"
+                  :url="`/storage/${docent.cul}`"
+                  :name="docent.cul.split('/').pop() ?? 'cul.pdf'"
+                />
+                <span v-else class="text-muted text-xs">No disponible</span>
+              </TableCell>
 
               <TableCell class="px-6 py-4 text-muted text-xs">
                 {{ docent.linkedin ?? 'N/A' }}
@@ -109,7 +125,7 @@ const deleteDocente = (id: number) => {
               <TableCell class="px-6 py-4">
                 <div class="flex justify-center gap-2">
                   <Button
-                    v-if="auth.user.role !== 'docente' || docent.user_id === auth.user.id"
+                    v-if="auth.user.role === 'admin' || (auth.user.role === 'docente' && Number(auth.user.id) === Number(docent.user_id))"
                     asChild
                     class="bg-primary text-primary-fg hover:opacity-90 active:opacity-100"
                   >
@@ -118,7 +134,7 @@ const deleteDocente = (id: number) => {
                     </Link>
                   </Button>
                   <Button
-                    v-if="auth.user.role !== 'docente'"
+                    v-if="auth.user.role === 'admin'"
                     class="bg-danger text-primary-fg hover:opacity-90 active:opacity-100"
                     @click="deleteDocente(docent.id)"
                   >

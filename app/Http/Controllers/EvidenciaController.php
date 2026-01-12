@@ -99,11 +99,12 @@ class EvidenciaController extends Controller
     {
         $this->authorize('delete', $evidencia);
 
+        $cursoId = $evidencia->curso_id;
         if ($evidencia->archivo_path && Storage::disk('public')->exists($evidencia->archivo_path)) {
             Storage::disk('public')->delete($evidencia->archivo_path);
         }
         $evidencia->delete();
-        event(new EvidenceUploaded($curso->id));
+        event(new EvidenceUploaded($cursoId));
         return back()->with('success', 'Evidencia eliminada.');
     }
 
@@ -162,7 +163,30 @@ class EvidenciaController extends Controller
         }
 
         $evidencia->save();
-        event(new EvidenceUploaded($curso->curso_id));
+        event(new EvidenceUploaded($evidencia->curso_id));
         return back()->with('success', 'Evidencia actualizada.');
+    }
+
+    /**
+     * Manual review of evidencia (responsable/admin only).
+     */
+    public function review(Request $request, Evidencia $evidencia)
+    {
+        $this->authorize('review', $evidencia);
+
+        $data = $request->validate([
+            'estado' => 'required|in:pendiente,observado,validado',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        $evidencia->estado = $data['estado'];
+        if (array_key_exists('observaciones', $data)) {
+            $evidencia->observaciones = $data['observaciones'];
+        }
+        $evidencia->save();
+
+        event(new EvidenceUploaded($evidencia->curso_id));
+
+        return back()->with('success', 'Estado de evidencia actualizado.');
     }
 }

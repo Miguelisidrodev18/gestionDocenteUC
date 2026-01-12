@@ -6,6 +6,9 @@ use App\Models\Curso;
 use App\Models\Docente;
 use App\Models\User;
 use App\Models\Area;
+use App\Models\Modalidad;
+use App\Models\Sede;
+use App\Models\PeriodoAcademico;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 class CursoController extends Controller
@@ -38,7 +41,7 @@ class CursoController extends Controller
         $periodo = $request->get('periodo', '2025-2');
         $docenteFilter = $request->get('docente_id');
         $modalidadFilter = $request->get('modalidad'); // texto: nombre/modalidad
-        $campusFilter = $request->get('campus');
+        $sedeIdFilter = $request->get('sede_id');
         $search = $request->get('q');
         $user = $request->user();
 
@@ -75,10 +78,8 @@ class CursoController extends Controller
             });
         }
 
-        if ($campusFilter) {
-            $cursosQuery->whereHas('registroNotas', function ($q) use ($campusFilter) {
-                $q->where('campus', 'like', '%'.$campusFilter.'%');
-            });
+        if ($sedeIdFilter) {
+            $cursosQuery->where('sede_id', $sedeIdFilter);
         }
 
         if ($search) {
@@ -98,13 +99,13 @@ class CursoController extends Controller
             });
         }
 
-        $cursos = $cursosQuery->with(['evidencias','modalidadRel.area','registroNotas'])->get();
+        $cursos = $cursosQuery->with(['evidencias','modalidadRel.area','registroNotas','sede'])->get();
         $docentes = Docente::all();
         $responsables = User::whereIn('role', ['responsable', 'admin'])->get();
 
         // Organizar por área -> modalidad -> cursos
-        $areas = Area::with(['modalidades' => function($q) use ($user, $docenteFilter, $periodo, $modalidadFilter, $campusFilter, $search) {
-            $q->with(['cursos' => function($qc) use ($user, $docenteFilter, $periodo, $modalidadFilter, $campusFilter, $search) {
+        $areas = Area::with(['modalidades' => function($q) use ($user, $docenteFilter, $periodo, $modalidadFilter, $sedeIdFilter, $search) {
+            $q->with(['cursos' => function($qc) use ($user, $docenteFilter, $periodo, $modalidadFilter, $sedeIdFilter, $search) {
                 $qc->with(['docente','responsable'])
                    ->where('periodo', $periodo);
                 if ($user) {
@@ -125,11 +126,7 @@ class CursoController extends Controller
                              });
                     });
                 }
-                if ($campusFilter) {
-                    $qc->whereHas('registroNotas', function ($qcamp) use ($campusFilter) {
-                        $qcamp->where('campus', 'like', '%'.$campusFilter.'%');
-                    });
-                }
+                if ($sedeIdFilter) { $qc->where('sede_id', $sedeIdFilter); }
                 if ($search) {
                     $qc->where(function ($qq) use ($search) {
                         $term = '%'.$search.'%';
@@ -151,14 +148,17 @@ class CursoController extends Controller
 
         return Inertia::render('Cursos/List', [
             'areas' => $areas,
+            'modalidadesCatalog' => Modalidad::orderBy('nombre')->get(['id', 'nombre', 'area_id']),
             'cursos' => $cursos,
             'docentes' => $docentes,
             'responsables' => $responsables,
+            'periodosCatalog' => PeriodoAcademico::orderByDesc('codigo')->get(['id', 'codigo', 'estado']),
+            'sedesCatalog' => Sede::orderBy('nombre')->get(['id', 'nombre']),
             'periodo' => $periodo,
             'filters' => [
                 'docente_id' => $docenteFilter,
                 'modalidad' => $modalidadFilter,
-                'campus' => $campusFilter,
+                'sede_id' => $sedeIdFilter,
                 'q' => $search,
             ],
             'currentDocenteId' => $user?->docente?->id,
@@ -174,8 +174,10 @@ class CursoController extends Controller
         'creditos' => 'required|integer',
         'nivel' => 'required|in:pregrado,postgrado',
         'modalidad' => 'required|string',
+        'area_id' => 'nullable|exists:areas,id',
         'modalidad_id' => 'nullable|exists:modalidades,id',
         'docente_id' => 'required|exists:docentes,id',
+        'sede_id' => 'nullable|exists:sedes,id',
         'drive_url' => 'nullable|url',
         'periodo' => 'required|string',
         'periodo_academico' => 'nullable|string',
@@ -184,15 +186,22 @@ class CursoController extends Controller
         'docentes_ids.*' => 'exists:docentes,id',
     ]);
 
+    $modalidadNombre = $request->modalidad;
+    if ($request->filled('modalidad_id')) {
+        $modalidadNombre = Modalidad::where('id', $request->modalidad_id)->value('nombre') ?? $modalidadNombre;
+    }
+
     $curso = Curso::create([
         'nombre' => $request->nombre,
         'codigo' => $request->codigo,
         'descripcion' => $request->descripcion,
         'creditos' => $request->creditos,
         'nivel' => $request->nivel,
-        'modalidad' => $request->modalidad,
+        'modalidad' => $modalidadNombre,
         'modalidad_id' => $request->modalidad_id,
+        'area_id' => $request->area_id,
         'docente_id' => $request->docente_id,
+        'sede_id' => $request->sede_id,
         'drive_url' => $request->drive_url,
         'user_id' => $request->responsable_id ?? $request->user()->id,
         'periodo' => $request->periodo,
@@ -205,24 +214,30 @@ class CursoController extends Controller
 
     return redirect()->route('cursos.index')->with('success', 'Curso creado correctamente');
 }
-public function edit($id)
+    public function edit($id)
 {
     $curso = Curso::with(['docente', 'responsable'])->findOrFail($id);
     $this->authorize('update', $curso);
     $docentes = Docente::all();
-    $responsables = User::where('role', 'responsable')->get();
+    $sedes = Sede::orderBy('nombre')->get(['id', 'nombre']);
+    $areas = Area::with('modalidades')->get();
 
     return Inertia::render('Cursos/Edit', [
         'curso' => $curso,
         'docentes' => $docentes,
-        'responsables' => $responsables,
+        'sedesCatalog' => $sedes,
+        'areas' => $areas,
+        'modalidadesCatalog' => Modalidad::orderBy('nombre')->get(['id', 'nombre', 'area_id']),
+        'periodosCatalog' => PeriodoAcademico::orderByDesc('codigo')->get(['id', 'codigo', 'estado']),
     ]);
 }
 
 public function show($id)
 {
+    $user = request()->user();
     $baseWith = [
         'docente','responsable','modalidadRel.area',
+        'sede',
         'evidencias' => function($q){ $q->latest(); },
         'actas' => function($q){ $q->latest(); },
     ];
@@ -232,13 +247,13 @@ public function show($id)
     try { if (\Illuminate\Support\Facades\Schema::hasTable('informe_finals')) { $curso->load('informeFinal'); } } catch (\Throwable $e) {}
     // Autorización: solo admin, responsable del curso o docente asignado/co-docente
     $this->authorize('view', $curso);
-    // Aggregation for registro de notas (totals by campus + averages)
+    // Aggregation for registro de notas (totals by sede + averages)
     $aggregate = [];
     $registros = method_exists($curso, 'registroNotas') && $curso->relationLoaded('registroNotas') ? $curso->getRelation('registroNotas') : collect();
     foreach ($registros as $r) {
-        $campus = $r->campus ?: 'General';
-        if (!isset($aggregate[$campus])) {
-            $aggregate[$campus] = [
+        $sede = $r->campus ?: 'General';
+        if (!isset($aggregate[$sede])) {
+            $aggregate[$sede] = [
                 'total_estudiantes' => 0,
                 'c1_aprobados' => 0,
                 'c1_desaprobados' => 0,
@@ -250,19 +265,19 @@ public function show($id)
                 'ep_promedio_count' => 0,
             ];
         }
-        $aggregate[$campus]['total_estudiantes'] += (int) $r->total_estudiantes;
-        $aggregate[$campus]['c1_aprobados'] += (int) $r->c1_aprobados;
-        $aggregate[$campus]['c1_desaprobados'] += (int) $r->c1_desaprobados;
-        $aggregate[$campus]['c1_promedio_sum'] += (float) $r->c1_promedio;
-        $aggregate[$campus]['c1_promedio_count'] += 1;
-        $aggregate[$campus]['ep_aprobados'] += (int) $r->ep_aprobados;
-        $aggregate[$campus]['ep_desaprobados'] += (int) $r->ep_desaprobados;
-        $aggregate[$campus]['ep_promedio_sum'] += (float) $r->ep_promedio;
-        $aggregate[$campus]['ep_promedio_count'] += 1;
+        $aggregate[$sede]['total_estudiantes'] += (int) $r->total_estudiantes;
+        $aggregate[$sede]['c1_aprobados'] += (int) $r->c1_aprobados;
+        $aggregate[$sede]['c1_desaprobados'] += (int) $r->c1_desaprobados;
+        $aggregate[$sede]['c1_promedio_sum'] += (float) $r->c1_promedio;
+        $aggregate[$sede]['c1_promedio_count'] += 1;
+        $aggregate[$sede]['ep_aprobados'] += (int) $r->ep_aprobados;
+        $aggregate[$sede]['ep_desaprobados'] += (int) $r->ep_desaprobados;
+        $aggregate[$sede]['ep_promedio_sum'] += (float) $r->ep_promedio;
+        $aggregate[$sede]['ep_promedio_count'] += 1;
     }
     $aggregateFormatted = [];
-    foreach ($aggregate as $campus => $a) {
-        $aggregateFormatted[$campus] = [
+    foreach ($aggregate as $sede => $a) {
+        $aggregateFormatted[$sede] = [
             'total_estudiantes' => $a['total_estudiantes'],
             'c1_aprobados' => $a['c1_aprobados'],
             'c1_porcentaje' => $a['total_estudiantes'] > 0 ? round(($a['c1_aprobados'] / max(1,$a['total_estudiantes']))*100,2) : 0,
@@ -278,6 +293,9 @@ public function show($id)
         'requerimientos' => $curso->requerimientos(),
         'avance' => $curso->avance,
         'registroAggregate' => $aggregateFormatted,
+        'sedesCatalog' => Sede::orderBy('nombre')->get(['id', 'nombre']),
+        'currentUserRole' => $user?->role,
+        'currentUserId' => $user?->id,
     ]);
 }
 public function destroy($id)
@@ -297,14 +315,21 @@ public function update(Request $request, $id)
         'creditos' => 'required|integer',
         'nivel' => 'required|in:pregrado,postgrado',
         'modalidad' => 'required|string',
+        'area_id' => 'nullable|exists:areas,id',
         'modalidad_id' => 'nullable|exists:modalidades,id',
         'docente_id' => 'required|exists:docentes,id',
+        'sede_id' => 'nullable|exists:sedes,id',
         'drive_url' => 'nullable|url',
         'responsable_id' => 'nullable|exists:users,id',
         'periodo_academico' => 'nullable|string',
         'docentes_ids' => 'array',
         'docentes_ids.*' => 'exists:docentes,id',
     ]);
+
+    $modalidadNombre = $request->modalidad;
+    if ($request->filled('modalidad_id')) {
+        $modalidadNombre = Modalidad::where('id', $request->modalidad_id)->value('nombre') ?? $modalidadNombre;
+    }
 
     $curso = Curso::findOrFail($id);
     $curso->update([
@@ -313,9 +338,11 @@ public function update(Request $request, $id)
         'descripcion' => $request->descripcion,
         'creditos' => $request->creditos,
         'nivel' => $request->nivel,
-        'modalidad' => $request->modalidad,
+        'modalidad' => $modalidadNombre,
         'modalidad_id' => $request->modalidad_id,
+        'area_id' => $request->area_id,
         'docente_id' => $request->docente_id,
+        'sede_id' => $request->sede_id,
         'drive_url' => $request->drive_url,
         'user_id' => $request->responsable_id ?? $curso->user_id,
         'periodo_academico' => $request->periodo_academico ?? $curso->periodo_academico,

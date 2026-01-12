@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
+import type { BreadcrumbItem } from '@/types';
 type SummaryItem = {
   aprobados: number;
   desaprobados: number;
@@ -36,12 +37,20 @@ type Opportunity = {
   owner?: { id: number; name: string } | null;
 };
 
-type CourseOption = { id: number; nombre: string; codigo: string };
+type CourseOption = {
+  id: number;
+  nombre: string;
+  codigo: string;
+  sede?: string | null;
+  responsables?: { id: number; name: string }[];
+};
 
 interface FinalPageProps {
   periodo: string;
   sede?: string | null;
   sedes: string[];
+  sedesCatalog?: { id: number; nombre: string }[];
+  periodosCatalog?: { id: number; codigo: string; estado: string }[];
   summary: Record<string, SummaryItem>;
   results: FinalResult[];
   opportunities: Opportunity[];
@@ -49,9 +58,19 @@ interface FinalPageProps {
 }
 
 const page = usePage<FinalPageProps>();
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }, { title: 'Final', href: '/final' }];
+
 const periodo = ref<string>(page.props.periodo ?? '2025-2');
 const sedeFiltro = ref<string>(page.props.sede ?? '');
 const sedes = computed(() => page.props.sedes ?? []);
+const sedesCatalog = computed(() => page.props.sedesCatalog ?? []);
+const periodosCatalog = computed(() => page.props.periodosCatalog ?? []);
+const sedesOptions = computed(() => {
+  const catalog = sedesCatalog.value.map((s) => s.nombre);
+  const fromResults = sedes.value;
+  const merged = [...catalog, ...fromResults].filter((s) => s && s.trim() !== '');
+  return Array.from(new Set(merged));
+});
 const summary = computed(() => page.props.summary ?? {});
 const opportunities = computed(() => page.props.opportunities ?? []);
 const courses = computed(() => page.props.courses ?? []);
@@ -79,6 +98,34 @@ const nuevaOportunidad = ref<{
 });
 
 const estados = ['ABIERTA', 'EN_PROGRESO', 'CERRADA'] as const;
+
+const selectedCourse = computed(() =>
+  courses.value.find((c) => String(c.id) === String(nuevaOportunidad.value.curso_id)),
+);
+
+watch(
+  () => nuevaOportunidad.value.curso_id,
+  () => {
+    const course = selectedCourse.value;
+    if (!course) {
+      nuevaOportunidad.value.owner_user_id = '';
+      return;
+    }
+    if (!nuevaOportunidad.value.sede && course.sede) {
+      nuevaOportunidad.value.sede = course.sede;
+    }
+    const responsables = course.responsables ?? [];
+    if (responsables.length === 1) {
+      nuevaOportunidad.value.owner_user_id = String(responsables[0].id);
+    } else if (responsables.length > 1) {
+      if (!responsables.some((r) => String(r.id) === String(nuevaOportunidad.value.owner_user_id))) {
+        nuevaOportunidad.value.owner_user_id = '';
+      }
+    } else {
+      nuevaOportunidad.value.owner_user_id = '';
+    }
+  },
+);
 
 const crearOportunidad = () => {
   if (!nuevaOportunidad.value.curso_id || !nuevaOportunidad.value.descripcion) return;
@@ -123,8 +170,8 @@ const eliminarOportunidad = (op: Opportunity) => {
 </script>
 
 <template>
-  <AppLayout>
-    <Head title="Resultados finales por sede" />
+  <AppLayout :breadcrumbs="breadcrumbs">
+<Head title="Resultados finales por sede" />
     <div class="p-6 space-y-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -137,16 +184,19 @@ const eliminarOportunidad = (op: Opportunity) => {
           <label class="text-sm flex items-center gap-2">
             <span class="text-muted-foreground">Periodo:</span>
             <select v-model="periodo" class="border rounded px-2 py-1 text-sm bg-background text-foreground">
-              <option value="2025-2">2025-2</option>
-              <option value="2026-0">2026-0</option>
-              <option value="2026-1">2026-1</option>
+              <option v-if="!periodosCatalog.length" value="2025-2">2025-2</option>
+              <option v-if="!periodosCatalog.length" value="2026-0">2026-0</option>
+              <option v-if="!periodosCatalog.length" value="2026-1">2026-1</option>
+              <option v-for="p in periodosCatalog" :key="p.id" :value="p.codigo">
+                {{ p.codigo }}
+              </option>
             </select>
           </label>
           <label class="text-sm flex items-center gap-2">
             <span class="text-muted-foreground">Sede:</span>
             <select v-model="sedeFiltro" class="border rounded px-2 py-1 text-sm bg-background text-foreground">
               <option value="">Todas</option>
-              <option v-for="sede in sedes" :key="sede" :value="sede">
+              <option v-for="sede in sedesOptions" :key="sede" :value="sede">
                 {{ sede }}
               </option>
             </select>
@@ -199,16 +249,36 @@ const eliminarOportunidad = (op: Opportunity) => {
               {{ c.codigo }} - {{ c.nombre }}
             </option>
           </select>
-          <input
+          <select
+            v-if="sedesOptions.length"
             v-model="nuevaOportunidad.sede"
             class="border rounded px-2 py-1 text-sm bg-background text-foreground"
-            placeholder="Sede (ej. Huancayo)"
-          />
+          >
+            <option value="">Seleccione sede</option>
+            <option v-for="sede in sedesOptions" :key="sede" :value="sede">
+              {{ sede }}
+            </option>
+          </select>
           <input
+            v-else
+            v-model="nuevaOportunidad.sede"
+            class="border rounded px-2 py-1 text-sm bg-background text-foreground"
+            placeholder="Sede"
+          />
+          <select
             v-model="nuevaOportunidad.owner_user_id"
             class="border rounded px-2 py-1 text-sm bg-background text-foreground"
-            placeholder="ID responsable (opcional)"
-          />
+            :disabled="!selectedCourse"
+          >
+            <option value="">Responsable (auto)</option>
+            <option
+              v-for="r in selectedCourse?.responsables ?? []"
+              :key="r.id"
+              :value="r.id"
+            >
+              {{ r.name }}
+            </option>
+          </select>
           <input
             v-model="nuevaOportunidad.due_date"
             type="date"
@@ -296,4 +366,3 @@ const eliminarOportunidad = (op: Opportunity) => {
     </div>
   </AppLayout>
 </template>
-

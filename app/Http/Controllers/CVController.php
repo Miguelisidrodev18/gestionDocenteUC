@@ -65,10 +65,10 @@ class CVController extends Controller
             'uploaded_by' => $request->user()->id,
         ]);
 
-        // Opcional: reflejar el CV más reciente en el campo cv_personal
-        // para que el módulo actual lo muestre con PdfFileCard
+        // Reflejar el CV más reciente en el campo cv_docente
+        // para que el módulo lo muestre con PdfFileCard
         $publicPath = $file->store("cv_docentes/{$docente->id}", 'public');
-        $docente->cv_personal = $publicPath;
+        $docente->cv_docente = $publicPath;
         $docente->save();
 
         // Auditoría básica: usuario e IP
@@ -82,6 +82,29 @@ class CVController extends Controller
         return response()->json([
             'message' => 'CV subido correctamente',
             'id'      => $cv->id,
+        ]);
+    }
+
+    /**
+     * Elimina el CV Docente reflejado en almacenamiento pA-oblico.
+     */
+    public function delete(Docente $docente)
+    {
+        $path = $docente->cv_docente;
+
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $docente->cv_docente = null;
+        $docente->save();
+
+        Log::info('CV eliminado', [
+            'docente_id' => $docente->id,
+        ]);
+
+        return response()->json([
+            'message' => 'CV eliminado correctamente',
         ]);
     }
 

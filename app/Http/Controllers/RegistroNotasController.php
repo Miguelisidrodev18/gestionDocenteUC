@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Curso;
 use App\Models\RegistroNota;
 use App\Events\DocumentUpdated;
+use App\Models\Sede;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,7 @@ class RegistroNotasController extends Controller
 
         $data = $request->validate([
             'campus' => 'nullable|string|max:100',
-            'campus_id' => 'nullable|integer',
+            'sede_id' => 'nullable|exists:sedes,id',
             'nrc' => 'nullable|string|max:100',
             'corte' => ['required', Rule::in(['PARCIAL', 'CONSOLIDADO2', 'FINAL'])],
             'docente_nombre' => 'nullable|string|max:150',
@@ -31,17 +32,24 @@ class RegistroNotasController extends Controller
             'hipotesis_ep' => 'nullable|string',
         ]);
 
-        // Validación de unicidad por curso/campus_id/nrc/corte
+        if (! empty($data['sede_id']) && empty($data['campus'])) {
+            $sede = Sede::find($data['sede_id']);
+            if ($sede) {
+                $data['campus'] = $sede->nombre;
+            }
+        }
+
+        // Validación de unicidad por curso/sede_id/nrc/corte
         $uniqueRule = Rule::unique('registro_notas')
             ->where('curso_id', $curso->id)
-            ->where('campus_id', $data['campus_id'] ?? null)
+            ->where('sede_id', $data['sede_id'] ?? null)
             ->where('nrc', $data['nrc'] ?? null)
             ->where('corte', $data['corte']);
 
         $request->validate([
             'nrc' => [$uniqueRule],
         ], [
-            'nrc.unique' => 'Ya existe un registro para este curso, campus, NRC y corte.',
+            'nrc.unique' => 'Ya existe un registro para este curso, sede, NRC y corte.',
         ]);
 
         $registro = new RegistroNota($data);

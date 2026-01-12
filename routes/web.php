@@ -43,22 +43,30 @@ Route::middleware(['auth', 'verified', 'role:docente,responsable'])->group(funct
     Route::patch('/evidencias/{evidencia}', [EvidenciaController::class, 'update'])->name('evidencias.update');
 });
 
-// Checklist de cursos (solo responsables; admin permitido por el middleware personalizado)
-Route::middleware(['auth', 'verified', 'role:responsable'])->group(function () {
+// Checklist de cursos (responsables y docentes; admin permitido por el middleware)
+Route::middleware(['auth', 'verified', 'role:responsable,docente,admin'])->group(function () {
     Route::get('/cursos/checklist', [ChecklistController::class, 'index'])->name('cursos.checklist');
     // La actualización manual del checklist está deshabilitada; la ruta se mantiene por compatibilidad.
     Route::patch('/cursos/documents/{document}', [ChecklistController::class, 'update'])->name('cursos.documents.update');
     Route::patch('/cursos/{curso}/review-state', [ChecklistController::class, 'changeCourseState'])->name('cursos.review_state');
+    Route::patch('/cursos/{curso}/checklist-item', [ChecklistController::class, 'updateItem'])->name('cursos.checklist.update_item');
+    Route::patch('/evidencias/{evidencia}/review', [EvidenciaController::class, 'review'])->name('evidencias.review');
 });
 
 // Docentes
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/docents', [DocenteController::class, 'index'])->name('teachers.index');
+});
+
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('/docents/create', [DocenteController::class, 'create'])->name('docents.create');
     Route::post('/docents', [DocenteController::class, 'store'])->name('teachers.store');
+    Route::delete('/docents/{docent}', [DocenteController::class, 'destroy'])->name('teachers.destroy');
+});
+
+Route::middleware(['auth', 'verified', 'role:admin,docente'])->group(function () {
     Route::get('/docents/{docent}/edit', [DocenteController::class, 'edit'])->name('teachers.edit');
     Route::put('/docents/{docent}', [DocenteController::class, 'update'])->name('teachers.update');
-    Route::delete('/docents/{docent}', [DocenteController::class, 'destroy'])->name('teachers.destroy');
 });
 
 // Cursos: index/show para todos los autenticados
@@ -70,13 +78,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Crear/editar/eliminar cursos: restringido a admin o responsable
-Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(function () {
-    // Módulo responsabilidades
+// Responsabilidades: ver/aceptar invitaciones (docente incluido)
+Route::middleware(['auth', 'verified', 'role:responsable,admin,docente'])->group(function () {
     Route::get('/responsabilidades', [ResponsibilityController::class, 'index'])->name('responsabilidades.index');
-    Route::patch('/responsabilidades/{curso}', [ResponsibilityController::class, 'update'])->name('responsabilidades.update');
-
     Route::post('/responsabilidades/{assignment}/aceptar', [ResponsibilityController::class, 'accept'])->name('responsabilidades.accept');
     Route::post('/responsabilidades/{assignment}/rechazar', [ResponsibilityController::class, 'reject'])->name('responsabilidades.reject');
+});
+
+// Crear/editar/eliminar cursos: restringido a admin o responsable
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
+    // M?dulo responsabilidades (asignar)
+    Route::patch('/responsabilidades/{curso}', [ResponsibilityController::class, 'update'])->middleware('role:admin')->name('responsabilidades.update');
     Route::post('/cursos/traer', [CursoController::class, 'importFromPrevious'])->name('cursos.import_previous');
     Route::patch('/cursos/{curso}/docente-responsable', [CursoController::class, 'updateResponsableDocente'])->name('cursos.responsable.update');
     Route::get('/cursos/create', [CursoController::class, 'create'])->name('cursos.create');
@@ -85,7 +97,7 @@ Route::middleware(['auth', 'verified', 'role:responsable,admin'])->group(functio
     Route::put('/cursos/{id}', [CursoController::class, 'update'])->name('cursos.update');
     Route::delete('/cursos/{id}', [CursoController::class, 'destroy'])->name('cursos.destroy');
 
-    // Módulo Final
+    // M?dulo Final
     Route::get('/final', [FinalController::class, 'index'])->name('final.index');
     Route::post('/final/opportunities', [FinalController::class, 'storeOpportunity'])->name('final.opportunities.store');
     Route::put('/final/opportunities/{opportunity}', [FinalController::class, 'updateOpportunity'])->name('final.opportunities.update');
@@ -116,16 +128,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Catálogos (datos maestros)
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('/catalogos', [CatalogController::class, 'index'])->name('catalogos.index');
 
     Route::post('/catalogos/sedes', [CatalogController::class, 'storeSede']);
     Route::put('/catalogos/sedes/{sede}', [CatalogController::class, 'updateSede']);
     Route::delete('/catalogos/sedes/{sede}', [CatalogController::class, 'destroySede']);
-
-    Route::post('/catalogos/campus', [CatalogController::class, 'storeCampus']);
-    Route::put('/catalogos/campus/{campus}', [CatalogController::class, 'updateCampus']);
-    Route::delete('/catalogos/campus/{campus}', [CatalogController::class, 'destroyCampus']);
 
     Route::post('/catalogos/areas', [CatalogController::class, 'storeArea']);
     Route::put('/catalogos/areas/{area}', [CatalogController::class, 'updateArea']);
@@ -145,11 +153,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/catalogos/bloques', [CatalogController::class, 'storeBloque']);
     Route::put('/catalogos/bloques/{bloque}', [CatalogController::class, 'updateBloque']);
-    Route::delete('/catalogos/bloques/{bloque>', [CatalogController::class, 'destroyBloque']);
+    Route::delete('/catalogos/bloques/{bloque}', [CatalogController::class, 'destroyBloque']);
 
     Route::post('/catalogos/requisitos', [CatalogController::class, 'storeRequisito']);
     Route::put('/catalogos/requisitos/{requisito}', [CatalogController::class, 'updateRequisito']);
     Route::delete('/catalogos/requisitos/{requisito}', [CatalogController::class, 'destroyRequisito']);
+
+    Route::post('/catalogos/especialidades', [CatalogController::class, 'storeEspecialidad']);
+    Route::put('/catalogos/especialidades/{especialidad}', [CatalogController::class, 'updateEspecialidad']);
+    Route::delete('/catalogos/especialidades/{especialidad}', [CatalogController::class, 'destroyEspecialidad']);
+
+    Route::post('/catalogos/limpiar', [CatalogController::class, 'cleanCatalogs']);
+    Route::post('/catalogos/limpiar-modalidades', [CatalogController::class, 'cleanModalidades']);
 });
 
 // Actualizaciones (avisos internos)
@@ -169,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/docentes/cv/plantilla', [CVController::class, 'downloadTemplate'])->name('cv.plantilla');
     Route::get('/docentes/{docente}/cv/generar', [CVController::class, 'generateFilled'])->name('cv.generar');
     Route::post('/docentes/{docente}/cv/upload', [CVController::class, 'upload'])->name('cv.upload');
+    Route::delete('/docentes/{docente}/cv/delete', [CVController::class, 'delete'])->name('cv.delete');
     Route::get('/docentes/{docente}/cv/descargar/{cv}', [CVController::class, 'download'])->name('cv.download');
 });
 

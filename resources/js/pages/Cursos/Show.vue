@@ -7,6 +7,9 @@ const page = usePage();
 const curso = page.props.curso as any;
 const requerimientos = page.props.requerimientos as Record<string, { required: number }>;
 const avance = page.props.avance as number;
+const sedesCatalog = (page.props as any).sedesCatalog ?? [];
+const currentUserRole = (page.props as any).currentUserRole ?? page.props.auth?.user?.role ?? null;
+const currentUserId = (page.props as any).currentUserId ?? page.props.auth?.user?.id ?? null;
 
 const tab = ref<'acta'|'recursos'|'registro'|'final'>('acta');
 const subTab = ref<'guia'|'presentacion'|'trabajo'>('guia');
@@ -18,6 +21,12 @@ const toastMsg = ref('');
 const toastType = ref<'success'|'error'>('success');
 const semanaRequerida = computed(() => (tab.value === 'recursos' && (subTab.value === 'guia' || subTab.value === 'presentacion')));
 const nombreArchivo = ref('');
+const canReviewEvidence = computed(() => {
+  if (currentUserRole === 'admin') return true;
+  if (currentUserRole !== 'responsable') return false;
+  if (!currentUserId) return false;
+  return Number(curso.user_id) === Number(currentUserId);
+});
 
 function slugify(s: string) {
   return (s || '')
@@ -125,18 +134,42 @@ function renombrar(ev: any) {
   });
 }
 
+function revisarEvidencia(ev: any, estado: 'pendiente' | 'observado' | 'validado') {
+  router.patch(`/evidencias/${ev.id}/review`, { estado }, {
+    preserveScroll: true,
+    onSuccess: () => { toast('Estado actualizado'); router.reload(); },
+    onError: () => { toast('No se pudo actualizar el estado', 'error'); },
+  });
+}
+
+function estadoLabel(estado?: string | null) {
+  if (estado === 'validado') return 'Validado';
+  if (estado === 'observado') return 'Observado';
+  return 'Pendiente';
+}
+
 // Nivel para trabajos finales
 const trabajoNivel = ref<'alto'|'medio'|'bajo'|''>('');
 
 // Registro de notas
 const registroForm = ref<any>({
-  campus: '', nrc: '', docente_nombre: '', total_estudiantes: 0,
+  campus: '', sede_id: '', nrc: '', docente_nombre: '', total_estudiantes: 0,
   c1_aprobados: 0, c1_desaprobados: 0, c1_promedio: 0,
   ep_aprobados: 0, ep_desaprobados: 0, ep_promedio: 0,
   hipotesis_c1: '', hipotesis_ep: ''
 });
 function enviarRegistro(){
-  router.post(`/cursos/${curso.id}/registro-notas`, registroForm.value, {
+  const payload = { ...registroForm.value };
+  if (payload.sede_id) {
+    const found = sedesCatalog.find((s: any) => String(s.id) === String(payload.sede_id));
+    if (found) {
+      payload.campus = found.nombre;
+    }
+  }
+  if (!payload.sede_id) {
+    delete payload.sede_id;
+  }
+  router.post(`/cursos/${curso.id}/registro-notas`, payload, {
     onSuccess: () => { toast('Registro guardado'); router.reload(); },
     onError: () => { toast('No se pudo guardar','error'); }
   });
@@ -233,7 +266,7 @@ function guardarInforme(){
             <div class="space-y-2">
               <div v-for="(a,i) in actaForm.asistentes" :key="i" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-center">
                 <input v-model="a.nombre" placeholder="Apellidos y nombres" class="rounded border bg-background p-2 md:col-span-2" />
-                <input v-model="a.campus" placeholder="Campus" class="rounded border bg-background p-2" />
+                <input v-model="a.campus" placeholder="Sede" class="rounded border bg-background p-2" />
                 <label class="flex items-center gap-2 text-sm">
                   <input type="checkbox" v-model="a.asistio" /> Asistió
                 </label>
@@ -311,8 +344,39 @@ function guardarInforme(){
                     <span v-if="ev.nivel" class="ml-2">Nivel: {{ ev.nivel }}</span>
                     <span v-if="ev.semana" class="ml-2">Semana {{ ev.semana }}</span>
                   </div>
+                  <div v-if="canReviewEvidence" class="text-xs mt-1">
+                    Estado:
+                    <span
+                      :class="ev.estado === 'validado' ? 'text-emerald-600' : (ev.estado === 'observado' ? 'text-amber-600' : 'text-muted-foreground')"
+                    >
+                      {{ estadoLabel(ev.estado) }}
+                    </span>
+                  </div>
                 </div>
                 <div class="flex items-center gap-3">
+                  <div v-if="canReviewEvidence" class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="px-2 py-1 text-xs rounded border border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                      @click="revisarEvidencia(ev, 'validado')"
+                    >
+                      Validar
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 text-xs rounded border border-amber-500 text-amber-700 hover:bg-amber-50"
+                      @click="revisarEvidencia(ev, 'observado')"
+                    >
+                      Observar
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 text-xs rounded border border-muted text-muted-foreground hover:bg-muted/40"
+                      @click="revisarEvidencia(ev, 'pendiente')"
+                    >
+                      Pendiente
+                    </button>
+                  </div>
                   <a class="p-1" title="Ver" :href="`/storage/${ev.archivo_path}`" target="_blank">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-primary"><path d="M12 5C5 5 2 12 2 12s3 7 10 7 10-7 10-7-3-7-10-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/></svg>
                   </a>
@@ -331,7 +395,13 @@ function guardarInforme(){
         <!-- Registro de notas -->
         <div v-else-if="tab==='registro'" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <input v-model="registroForm.campus" placeholder="Campus" class="rounded border bg-background p-2" />
+            <select v-model="registroForm.sede_id" class="rounded border bg-background p-2">
+              <option value="">Sede (catálogo)</option>
+              <option v-for="s in sedesCatalog" :key="s.id" :value="s.id">
+                {{ s.nombre }}
+              </option>
+            </select>
+            <input v-model="registroForm.campus" placeholder="Sede (texto)" class="rounded border bg-background p-2" />
             <input v-model="registroForm.nrc" placeholder="NRC" class="rounded border bg-background p-2" />
             <input v-model="registroForm.docente_nombre" placeholder="Docente" class="rounded border bg-background p-2" />
             <input v-model.number="registroForm.total_estudiantes" type="number" min="0" placeholder="Total estudiantes" class="rounded border bg-background p-2" />
@@ -362,8 +432,8 @@ function guardarInforme(){
 
           <div v-if="Object.keys(($page.props as any).registroAggregate || {}).length" class="rounded border p-3">
             <div class="font-medium mb-2">Resultado final (consolidado)</div>
-            <div v-for="(row,campus) in ($page.props as any).registroAggregate" :key="campus" class="grid grid-cols-5 gap-2 text-sm items-center border-b py-1">
-              <div class="font-medium">{{ campus }}</div>
+            <div v-for="(row,sede) in ($page.props as any).registroAggregate" :key="sede" class="grid grid-cols-5 gap-2 text-sm items-center border-b py-1">
+              <div class="font-medium">{{ sede }}</div>
               <div>Total: {{ row.total_estudiantes }}</div>
               <div>C1: {{ row.c1_aprobados }} ({{ row.c1_porcentaje }}%)</div>
               <div>EP: {{ row.ep_aprobados }} ({{ row.ep_porcentaje }}%)</div>

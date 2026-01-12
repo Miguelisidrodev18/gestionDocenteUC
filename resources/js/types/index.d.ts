@@ -45,7 +45,7 @@ export interface Docente {
     telefono: string | null;
     especialidad: string;
     cv_sunedu: string | null;
-    cv_personal: string | null;
+    cv_docente: string | null;
     linkedin: string | null;
     estado: 'activo' | 'inactivo';
     cip: string | null;
@@ -78,6 +78,9 @@ export interface Cursos {
     drive_url?: string | null;
     periodo?: string;
     documents?: CourseDocument[];
+    checklist_manual?: Record<string, string> | null;
+    sede_id?: number | null;
+    sede?: { id: number; nombre: string } | null;
     docente?: Docente | null;
     responsable?: User | null;
 }

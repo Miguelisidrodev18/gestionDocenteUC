@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Foundation\Inspiring;
+use App\Models\Curso;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -47,6 +48,19 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'canChecklist' => function () use ($request) {
+                $user = $request->user();
+                if (! $user) {
+                    return false;
+                }
+                if ($user->isAdmin() || $user->isResponsable()) {
+                    return true;
+                }
+                if ($user->isDocente()) {
+                    return Curso::where('user_id', $user->id)->exists();
+                }
+                return false;
+            },
             'notifications' => $request->user()?->unreadNotifications()->latest()->limit(10)->get()->map(function ($n) {
                 return [
                     'id' => $n->id,

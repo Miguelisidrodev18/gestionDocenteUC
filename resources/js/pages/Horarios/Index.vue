@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import type { BreadcrumbItem } from '@/types';
 type Meeting = {
   id: number;
   curso_id: number;
@@ -15,6 +16,8 @@ type Meeting = {
 };
 
 const page = usePage();
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }, { title: 'Horarios', href: '/horarios' }];
+
 const meetings = computed<Meeting[]>(() => page.props.meetings ?? []);
 const cursos = computed<any[]>(() => page.props.cursos ?? []);
 const flash: any = (page as any).props.flash ?? {};
@@ -97,8 +100,8 @@ function eventsForDay(d: Date) {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="p-6 min-h-screen bg-background text-foreground">
+  <AppLayout :breadcrumbs="breadcrumbs">
+<div class="p-6 min-h-screen bg-background text-foreground">
       <div class="flex items-center justify-between mb-4">
         <h1 class="text-2xl font-bold">Calendario de reuniones</h1>
         <div class="flex items-center gap-2">

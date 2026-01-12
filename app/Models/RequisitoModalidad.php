@@ -12,6 +12,7 @@ class RequisitoModalidad extends Model
     protected $fillable = [
         'modalidad_id',
         'tipo_evidencia_id',
+        'aplica_a',
         'bloque_id',
         'minimo',
         'peso',
@@ -37,4 +38,3 @@ class RequisitoModalidad extends Model
         return $this->belongsTo(Bloque::class);
     }
 }
-

@@ -21,11 +21,16 @@ class Docente extends Model
         'especialidad',
         'cv_sunedu',
         'cv_personal',
+        'cv_docente',
         'cul',
         'linkedin',
         'estado',
         'cip',
         'user_id',
+    ];
+
+    protected $appends = [
+        'cv_docente',
     ];
 
     /**
@@ -65,5 +70,15 @@ class Docente extends Model
     public function advisorProfile(): HasOne
     {
         return $this->hasOne(AdvisorProfile::class);
+    }
+
+    public function getCvDocenteAttribute(): ?string
+    {
+        return $this->cv_personal;
+    }
+
+    public function setCvDocenteAttribute(?string $value): void
+    {
+        $this->attributes['cv_personal'] = $value;
     }
 }

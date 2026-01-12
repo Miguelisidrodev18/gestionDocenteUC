@@ -1,22 +1,31 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import type { BreadcrumbItem } from '@/types';
 import { router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const { props } = usePage() as any;
 const role = props.currentUserRole ?? props.auth?.user?.role;
+const breadcrumbs: BreadcrumbItem[] = [
+  { title: 'Dashboard', href: '/dashboard' },
+];
 
 // Datos generales
 const docentesCount = props.docentesCount ?? 0;
 const cursosCount = props.cursosCount ?? 0;
 const cursosPorPeriodo = props.cursosPorPeriodo ?? [];
 const cursosDocente = props.cursosDocente ?? [];
+const periodosCatalog = props.periodosCatalog ?? [];
+const sedesCatalog = props.sedesCatalog ?? [];
+const areasCatalog = props.areasCatalog ?? [];
+const modalidadesCatalog = props.modalidadesCatalog ?? [];
 
 // Métricas avanzadas (admin / responsable)
 const filters = ref({
   periodo: props.initialFilters?.periodo ?? null,
   sede: props.initialFilters?.sede ?? null,
-  responsable_id: props.initialFilters?.responsable_id ?? null,
+  area_id: props.initialFilters?.area_id ?? null,
+  modalidad_id: props.initialFilters?.modalidad_id ?? null,
 });
 
 const metrics = ref(props.initialMetrics ?? null);
@@ -53,8 +62,22 @@ const monthlyPolyline = computed(() => {
     .join(' ');
 });
 
+const periodosOptions = computed(() => {
+  if (periodosCatalog.length) {
+    return periodosCatalog.map((p: any) => p.codigo);
+  }
+  return (cursosPorPeriodo as any[]).map((p) => p.periodo);
+});
+
+const modalidadesFiltradas = computed(() => {
+  if (!filters.value.area_id) return modalidadesCatalog;
+  return (modalidadesCatalog as any[]).filter(
+    (m) => String(m.area_id ?? '') === String(filters.value.area_id),
+  );
+});
+
 const selectedPeriodo = computed(() => {
-  return filters.value.periodo ?? (cursosPorPeriodo[0]?.periodo ?? null);
+  return filters.value.periodo ?? (periodosOptions.value[0] ?? null);
 });
 
 const selectedPeriodoTotal = computed(() => {
@@ -63,6 +86,13 @@ const selectedPeriodoTotal = computed(() => {
   const match = (cursosPorPeriodo as any[]).find((p) => p.periodo === periodo);
   return match?.total ?? 0;
 });
+
+watch(
+  () => filters.value.area_id,
+  () => {
+    filters.value.modalidad_id = null;
+  },
+);
 
 onMounted(() => {
   if (!metrics.value && role !== 'docente') {
@@ -77,7 +107,8 @@ function loadMetrics() {
   const params = new URLSearchParams();
   if (filters.value.periodo) params.append('periodo', filters.value.periodo);
   if (filters.value.sede) params.append('sede', filters.value.sede);
-  if (filters.value.responsable_id) params.append('responsable_id', String(filters.value.responsable_id));
+  if (filters.value.area_id) params.append('area_id', String(filters.value.area_id));
+  if (filters.value.modalidad_id) params.append('modalidad_id', String(filters.value.modalidad_id));
 
   fetch(`/dashboard/metrics?${params.toString()}`, {
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -101,13 +132,18 @@ function goToDocentes() {
 </script>
 
 <template>
-  <AppLayout>
+  <AppLayout :breadcrumbs="breadcrumbs">
     <div
       class="p-8 min-h-screen text-foreground bg-gradient-to-b from-[#FBE4D8] via-[#854F6C] to-[#190019]"
     >
-      <h1 class="text-3xl font-bold mb-8 text-center text-primary-foreground drop-shadow">
-        Dashboard
-      </h1>
+      <div class="mb-8 text-center">
+        <h1 class="text-4xl font-extrabold tracking-tight text-primary-foreground drop-shadow">
+          Panel general
+        </h1>
+        <p class="mt-2 text-sm text-primary-foreground/80">
+          Seguimiento de avance por area, modalidad y sede.
+        </p>
+      </div>
 
       <!-- Vista DOCENTE -->
       <div v-if="role === 'docente'">
@@ -204,27 +240,55 @@ function goToDocentes() {
               v-model="filters.periodo"
               class="border border-border bg-background text-foreground p-2 rounded min-w-[140px]"
             >
-              <option v-for="p in cursosPorPeriodo" :key="p.periodo" :value="p.periodo">
-                {{ p.periodo }}
+              <option v-for="p in periodosOptions" :key="p" :value="p">
+                {{ p }}
               </option>
             </select>
           </div>
 
           <div class="flex flex-col">
-            <label class="text-xs text-muted-foreground mb-1">Sede / campus</label>
-            <input
-              v-model="filters.sede"
-              placeholder="Ej: Huancayo"
+            <label class="text-xs text-muted-foreground mb-1">Area</label>
+            <select
+              v-model="filters.area_id"
               class="border border-border bg-background text-foreground p-2 rounded min-w-[160px]"
-            />
+            >
+              <option value="">Todas</option>
+              <option v-for="a in areasCatalog" :key="a.id" :value="a.id">
+                {{ a.nombre }}
+              </option>
+            </select>
           </div>
 
           <div class="flex flex-col">
-            <label class="text-xs text-muted-foreground mb-1">Responsable (ID opcional)</label>
+            <label class="text-xs text-muted-foreground mb-1">Modalidad</label>
+            <select
+              v-model="filters.modalidad_id"
+              class="border border-border bg-background text-foreground p-2 rounded min-w-[180px]"
+            >
+              <option value="">Todas</option>
+              <option v-if="!modalidadesFiltradas.length" value="" disabled>Sin modalidades</option>
+              <option v-for="m in modalidadesFiltradas" :key="m.id" :value="m.id">
+                {{ m.nombre }}
+              </option>
+            </select>
+          </div>
+
+          <div class="flex flex-col">
+            <label class="text-xs text-muted-foreground mb-1">Sede</label>
+            <select
+              v-if="sedesCatalog.length"
+              v-model="filters.sede"
+              class="border border-border bg-background text-foreground p-2 rounded min-w-[160px]"
+            >
+              <option value="">Todos</option>
+              <option v-for="s in sedesCatalog" :key="s.id" :value="s.nombre">
+                {{ s.nombre }}
+              </option>
+            </select>
             <input
-              v-model.number="filters.responsable_id"
-              placeholder="ID usuario responsable"
-              type="number"
+              v-else
+              v-model="filters.sede"
+              placeholder="Sede"
               class="border border-border bg-background text-foreground p-2 rounded min-w-[160px]"
             />
           </div>

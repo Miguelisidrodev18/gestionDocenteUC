@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 
+import type { BreadcrumbItem } from '@/types';
 const page: any = usePage();
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }, { title: 'Cursos', href: '/cursos' }];
+
 const cursosProp = page.props.cursos ?? [];
 const docentes = page.props.docentes ?? [];
-const responsables = page.props.responsables ?? [];
 const areas = page.props.areas ?? [];
+const modalidadesCatalog = page.props.modalidadesCatalog ?? [];
+const periodosCatalog = page.props.periodosCatalog ?? [];
+const sedesCatalog = page.props.sedesCatalog ?? [];
 const currentUserRole = page.props.currentUserRole ?? page.props.auth?.user?.role;
 const currentDocenteId = page.props.currentDocenteId ?? null;
 
 const vista = ref<'tabla' | 'tarjetas'>('tabla');
 const mostrarFormulario = ref(false);
 
-const search = ref(page.props.filters?.q ?? '');
 const periodoSeleccionado = ref(page.props.periodo ?? '2025-2');
-const filtroDocenteId = ref(page.props.filters?.docente_id ?? '');
 const filtroModalidad = ref(page.props.filters?.modalidad ?? '');
-const filtroCampus = ref(page.props.filters?.campus ?? '');
+const filtroSedeId = ref(page.props.filters?.sede_id ?? '');
 const sort = ref(page.props.filters?.sort ?? 'nombre');
 const dir = ref(page.props.filters?.dir ?? 'asc');
-const perPage = ref(page.props.filters?.per_page ?? 12);
 
 const nuevoCurso = ref({
   nombre: '',
@@ -29,11 +32,12 @@ const nuevoCurso = ref({
   descripcion: '',
   creditos: '',
   nivel: 'pregrado',
-  modalidad: 'presencial',
+  modalidad: '',
   modalidad_id: '',
+  area_id: '',
   docente_id: '',
+  sede_id: '',
   drive_url: '',
-  responsable_id: '',
   periodo_academico: '',
   docentes_ids: [] as number[],
 });
@@ -44,9 +48,55 @@ onMounted(() => {
   }
 });
 
+watch(periodoSeleccionado, (value) => {
+  if (!nuevoCurso.value.periodo_academico) {
+    nuevoCurso.value.periodo_academico = value;
+  }
+});
+
+watch(
+  () => nuevoCurso.value.area_id,
+  () => {
+    nuevoCurso.value.modalidad_id = '';
+    nuevoCurso.value.modalidad = '';
+  },
+);
+
+watch(
+  () => nuevoCurso.value.modalidad_id,
+  (value) => {
+    const allModalidades = (areas ?? []).flatMap((area: any) => area.modalidades ?? []);
+    const selected = allModalidades.find((m: any) => String(m.id) === String(value));
+    nuevoCurso.value.modalidad = selected?.nombre ?? '';
+  },
+);
+
 const cursosList = computed(() => (cursosProp?.data ? cursosProp.data : cursosProp) || []);
 const cursosLinks = computed(() => cursosProp?.links ?? []);
 const cursosSinModalidad = computed(() => cursosList.value.filter((c: any) => !c.modalidad_id));
+const modalidadOptions = computed(() => {
+  const fromCatalog = (areas ?? [])
+    .flatMap((area: any) => area.modalidades ?? [])
+    .map((m: any) => String(m?.nombre ?? m).trim())
+    .filter((m: string) => m.length > 0);
+  const seen = new Set<string>();
+  return fromCatalog.filter((value) => {
+    const key = value.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+});
+const areaSeleccionada = computed(() => {
+  return (areas ?? []).find((area: any) => String(area.id) === String(nuevoCurso.value.area_id)) ?? null;
+});
+const modalidadesPorArea = computed(() => {
+  const direct = areaSeleccionada.value?.modalidades ?? [];
+  if (direct.length) return direct;
+  return (modalidadesCatalog ?? []).filter(
+    (m: any) => String(m.area_id ?? '') === String(nuevoCurso.value.area_id),
+  );
+});
 
 const puedeTraerCursos = computed(() => {
   if (!(currentUserRole === 'admin' || currentUserRole === 'responsable')) {
@@ -70,31 +120,28 @@ function abrirGoogleDrive(url: string) {
 }
 
 function eliminarCurso(id: number) {
-  if (confirm('¿Eliminar este curso?')) {
-    router.delete(`/cursos/${id}`, {
-      onSuccess: () => router.reload(),
-    });
+  if (confirm('Eliminar este curso?')) {
+    router.delete(`/cursos/${id}`,
+      {
+        onSuccess: () => router.reload(),
+      },
+    );
   }
 }
 
 function aplicarFiltros(extra: Record<string, any> = {}) {
   const params: Record<string, any> = {
     periodo: periodoSeleccionado.value,
-    q: search.value || undefined,
     sort: sort.value,
     dir: dir.value,
-    per_page: perPage.value,
     ...extra,
   };
 
-  if (currentUserRole === 'admin' && filtroDocenteId.value) {
-    params.docente_id = filtroDocenteId.value;
-  }
   if (filtroModalidad.value) {
     params.modalidad = filtroModalidad.value;
   }
-  if (filtroCampus.value) {
-    params.campus = filtroCampus.value;
+  if (filtroSedeId.value) {
+    params.sede_id = filtroSedeId.value;
   }
 
   router.get('/cursos', params, { preserveState: true, preserveScroll: true });
@@ -121,14 +168,26 @@ function agregarCurso() {
     periodo: periodoSeleccionado.value,
   };
 
-  if (!payload.responsable_id) {
-    delete payload.responsable_id;
-  }
-
   router.post('/cursos', payload, {
     onSuccess: () => {
       mostrarFormulario.value = false;
-      router.reload();
+      Swal.fire({
+        icon: 'success',
+        title: 'Curso creado',
+        text: 'El curso ha sido creado exitosamente.',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#6d28d9',
+      }).then(() => {
+        router.reload();
+      });
+    },
+    onError: () => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al crear curso',
+        text: 'Revisa los campos e intentalo nuevamente.',
+        confirmButtonColor: '#6d28d9',
+      });
     },
   });
 }
@@ -150,96 +209,90 @@ function firstRegistro(curso: any) {
   }
   return null;
 }
+
+function sedeLabel(curso: any) {
+  if (curso?.sede?.nombre) return curso.sede.nombre;
+  const registro = firstRegistro(curso);
+  if (!registro) return 'N/A';
+  if (registro.campus) return registro.campus;
+  return 'N/A';
+}
 </script>
 
 <template>
-  <AppLayout>
-    <div class="p-8 min-h-screen bg-background text-foreground">
+  <AppLayout :breadcrumbs="breadcrumbs">
+<div class="p-8 min-h-screen bg-background text-foreground">
       <div class="flex flex-wrap items-center gap-3 mb-6">
         <h1 class="text-2xl font-bold">Asignaturas</h1>
 
         <select
           v-model="periodoSeleccionado"
-          @change="aplicarFiltros({ page: 1 })"
           class="border border-border bg-background text-foreground p-2 rounded"
         >
-          <option value="2025-2">2025-2</option>
-          <option value="2026-0">2026-0</option>
-          <option value="2026-1">2026-1</option>
-        </select>
-
-        <input
-          v-model="search"
-          @keyup.enter="aplicarFiltros({ page: 1 })"
-          placeholder="Buscar código, nombre o docente"
-          class="flex-1 min-w-[240px] border border-border bg-background text-foreground p-2 rounded"
-        />
-
-        <button
-          @click="aplicarFiltros({ page: 1 })"
-          class="px-3 py-2 rounded border bg-primary text-primary-foreground hover:opacity-90 transition"
-          title="Buscar"
-        >
-          Buscar
-        </button>
-
-        <select
-          v-if="currentUserRole === 'admin'"
-          v-model="filtroDocenteId"
-          @change="aplicarFiltros({ page: 1 })"
-          class="border border-border bg-background text-foreground p-2 rounded"
-        >
-          <option value="">Todos los docentes</option>
-          <option v-for="docente in docentes" :key="docente.id" :value="docente.id">
-            {{ docente.nombre }} {{ docente.apellido }}
+          <option v-if="!periodosCatalog.length" value="2025-2">2025-2</option>
+          <option v-if="!periodosCatalog.length" value="2026-0">2026-0</option>
+          <option v-if="!periodosCatalog.length" value="2026-1">2026-1</option>
+          <option v-for="p in periodosCatalog" :key="p.id" :value="p.codigo">
+            {{ p.codigo }}
           </option>
         </select>
 
-        <input
-          v-model="filtroModalidad"
-          @keyup.enter="aplicarFiltros({ page: 1 })"
-          placeholder="Filtrar modalidad"
-          class="border border-border bg-background text-foreground p-2 rounded text-sm max-w-[160px]"
-        />
-
-        <input
-          v-model="filtroCampus"
-          @keyup.enter="aplicarFiltros({ page: 1 })"
-          placeholder="Filtrar campus"
-          class="border border-border bg-background text-foreground p-2 rounded text-sm max-w-[160px]"
-        />
-
         <select
-          v-model.number="perPage"
-          @change="aplicarFiltros({ page: 1 })"
-          class="border border-border bg-background text-foreground p-2 rounded"
+          v-model="filtroModalidad"
+          class="border border-border bg-background text-foreground p-2 rounded text-sm max-w-[180px]"
         >
-          <option :value="8">8</option>
-          <option :value="12">12</option>
-          <option :value="24">24</option>
+          <option value="">Modalidad (todas)</option>
+          <option v-if="!modalidadOptions.length" value="" disabled>Sin modalidades</option>
+          <option v-for="mod in modalidadOptions" :key="mod" :value="mod">
+            {{ mod }}
+          </option>
         </select>
 
-        <div class="ml-auto flex items-center gap-2">
+        <select
+          v-model="filtroSedeId"
+          class="border border-border bg-background text-foreground p-2 rounded text-sm max-w-[180px]"
+        >
+          <option value="">Sede (todas)</option>
+          <option v-for="s in sedesCatalog" :key="s.id" :value="s.id">
+            {{ s.nombre }}
+          </option>
+        </select>
+
+        <button
+          @click="aplicarFiltros({ page: 1 })"
+          class="px-3 py-2 rounded border bg-emerald-600 text-white hover:bg-emerald-700 transition"
+          title="Aplicar filtros"
+        >
+          Aplicar filtros
+        </button>
+
+        <div class="ml-auto inline-flex items-center rounded border border-slate-400 overflow-hidden">
           <button
             @click="vista = 'tabla'"
-            :class="['px-3 py-1 rounded border', vista === 'tabla' ? 'bg-primary text-primary-foreground' : '']"
+            :class="[
+              'px-3 py-1 border-r border-slate-400 text-slate-700 hover:bg-slate-100',
+              vista === 'tabla' ? 'bg-slate-700 text-white' : '',
+            ]"
           >
             Tabla
           </button>
           <button
             @click="vista = 'tarjetas'"
-            :class="['px-3 py-1 rounded border', vista === 'tarjetas' ? 'bg-primary text-primary-foreground' : '']"
+            :class="[
+              'px-3 py-1 text-slate-700 hover:bg-slate-100',
+              vista === 'tarjetas' ? 'bg-slate-700 text-white' : '',
+            ]"
           >
             Tarjetas
           </button>
-          <button
-            v-if="currentUserRole !== 'docente'"
-            @click="mostrarFormulario = true"
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-          >
-            Agregar curso
-          </button>
         </div>
+        <button
+          v-if="currentUserRole === 'admin'"
+          @click="mostrarFormulario = true"
+          class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded ml-3"
+        >
+          Agregar curso
+        </button>
       </div>
 
       <!-- Modal nuevo curso -->
@@ -248,6 +301,9 @@ function firstRegistro(curso: any) {
           @submit.prevent="agregarCurso"
           class="w-[90vw] max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 p-6 rounded-xl border bg-card shadow-xl"
         >
+          <div class="md:col-span-2">
+            <h2 class="text-lg font-semibold text-foreground">Nuevo curso</h2>
+          </div>
           <label class="flex flex-col gap-1">
             <span class="text-sm text-gray-600">Nombre del curso</span>
             <input
@@ -257,7 +313,7 @@ function firstRegistro(curso: any) {
             />
           </label>
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Código</span>
+            <span class="text-sm text-gray-600">NRC</span>
             <input
               v-model="nuevoCurso.codigo"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
@@ -265,14 +321,14 @@ function firstRegistro(curso: any) {
             />
           </label>
           <label class="md:col-span-2 flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Descripción</span>
+            <span class="text-sm text-gray-600">Descripcion</span>
             <input
               v-model="nuevoCurso.descripcion"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </label>
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Créditos</span>
+            <span class="text-sm text-gray-600">Creditos</span>
             <input
               v-model="nuevoCurso.creditos"
               type="number"
@@ -293,30 +349,41 @@ function firstRegistro(curso: any) {
           </label>
 
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Área y modalidad</span>
+            <span class="text-sm text-gray-600">Area</span>
             <select
-              v-model="nuevoCurso.modalidad_id"
+              v-model="nuevoCurso.area_id"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Seleccionar…</option>
-              <template v-for="area in areas" :key="area.id">
-                <optgroup :label="area.nombre">
-                  <option v-for="m in area.modalidades" :key="m.id" :value="m.id">
-                    {{ m.nombre }}
-                  </option>
-                </optgroup>
-              </template>
+              <option value="">Seleccionar</option>
+              <option v-for="area in areas" :key="area.id" :value="area.id">
+                {{ area.nombre }}
+              </option>
             </select>
           </label>
 
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Docente principal</span>
+            <span class="text-sm text-gray-600">Modalidad</span>
+            <select
+              v-model="nuevoCurso.modalidad_id"
+              class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
+              :disabled="!nuevoCurso.area_id"
+            >
+              <option value="">Seleccionar</option>
+              <option v-for="m in modalidadesPorArea" :key="m.id" :value="m.id">
+                {{ m.nombre }}
+              </option>
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-sm text-gray-600">Docente del curso</span>
+            <span class="text-[11px] text-muted-foreground">El responsable se asigna en Responsabilidades.</span>
             <select
               v-model="nuevoCurso.docente_id"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
               required
             >
-              <option value="">Seleccionar…</option>
+              <option value="">Seleccionar</option>
               <option v-for="docente in docentes" :key="docente.id" :value="docente.id">
                 {{ docente.nombre }} {{ docente.apellido }}
               </option>
@@ -324,14 +391,14 @@ function firstRegistro(curso: any) {
           </label>
 
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Responsable</span>
+            <span class="text-sm text-gray-600">Sede</span>
             <select
-              v-model="nuevoCurso.responsable_id"
+              v-model="nuevoCurso.sede_id"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">(Por defecto el usuario actual)</option>
-              <option v-for="user in responsables" :key="user.id" :value="user.id">
-                {{ user.name }}
+              <option value="">Seleccionar</option>
+              <option v-for="s in sedesCatalog" :key="s.id" :value="s.id">
+                {{ s.nombre }}
               </option>
             </select>
           </label>
@@ -356,63 +423,68 @@ function firstRegistro(curso: any) {
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </label>
-
           <label class="md:col-span-2 flex flex-col gap-1">
-            <span class="text-sm text-gray-600">Periodo académico</span>
-            <input
+            <span class="text-sm text-gray-600">Periodo academico</span>
+            <select
               v-model="nuevoCurso.periodo_academico"
-              :placeholder="periodoSeleccionado"
               class="border border-border bg-background text-foreground p-2 rounded focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            >
+              <option value="">Seleccionar</option>
+              <option v-if="!periodosCatalog.length" :value="periodoSeleccionado">
+                {{ periodoSeleccionado }}
+              </option>
+              <option v-for="p in periodosCatalog" :key="p.id" :value="p.codigo">
+                {{ p.codigo }}
+              </option>
+            </select>
           </label>
 
           <div class="md:col-span-2 flex justify-end gap-2">
             <button type="button" @click="mostrarFormulario = false" class="px-4 py-2 rounded border">
               Cancelar
             </button>
-            <button type="submit" class="bg-primary text-primary-foreground px-4 py-2 rounded hover:opacity-90 transition">
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
               Guardar
             </button>
           </div>
         </form>
       </div>
 
-        <!-- Vista tabla -->
-        <div v-if="vista === 'tabla'" class="rounded-lg border overflow-x-auto mb-8">
-          <div
-            v-if="puedeTraerCursos"
-            class="w-full flex justify-center py-3 bg-muted/40 border-b border-border/60"
+      <div v-if="vista === 'tabla'">
+        <div class="rounded-lg border overflow-x-auto mb-8">
+        <div
+          v-if="puedeTraerCursos"
+          class="w-full flex justify-center py-3 bg-muted/40 border-b border-border/60"
+        >
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-background/60 text-xs font-medium text-foreground/80 hover:bg-background hover:text-foreground transition"
+            @click="traerCursosDesdePeriodoAnterior"
           >
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-background/60 text-xs font-medium text-foreground/80 hover:bg-background hover:text-foreground transition"
-              @click="traerCursosDesdePeriodoAnterior"
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4 opacity-70"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4 opacity-70"
-              >
-                <path d="M10 4v12M4 10h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span>Traer cursos desde el periodo anterior</span>
-            </button>
-          </div>
-          <table class="min-w-full text-sm">
+              <path d="M10 4v12M4 10h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Traer cursos desde el periodo anterior</span>
+          </button>
+        </div>
+        <table class="min-w-full text-sm">
           <thead class="bg-muted text-foreground/80">
             <tr>
               <th class="text-left p-3">
-                <button @click="ordenar('codigo')" class="underline">Código</button>
+                <button @click="ordenar('codigo')" class="underline">NRC</button>
               </th>
               <th class="text-left p-3">
                 <button @click="ordenar('nombre')" class="underline">Nombre</button>
               </th>
-              <th class="text-left p-3">Área</th>
+              <th class="text-left p-3">Area</th>
               <th class="text-left p-3">Modalidad</th>
-              <th class="text-left p-3">Campus</th>
-              <th class="text-left p-3">NRC</th>
+              <th class="text-left p-3">Sede</th>
               <th class="text-left p-3">Docente</th>
               <th class="text-left p-3">Responsable</th>
               <th class="text-left p-3">Avance</th>
@@ -428,22 +500,19 @@ function firstRegistro(curso: any) {
                 {{ curso.nombre }}
               </td>
               <td class="p-3">
-                {{ curso.modalidadRel?.area?.nombre ?? '—' }}
+                {{ curso.modalidad_rel?.area?.nombre ?? '-' }}
               </td>
               <td class="p-3">
-                {{ curso.modalidadRel?.nombre ?? curso.modalidad }}
+                {{ curso.modalidad_rel?.nombre ?? '-' }}
               </td>
               <td class="p-3">
-                {{ firstRegistro(curso)?.campus ?? '—' }}
+                {{ sedeLabel(curso) }}
               </td>
               <td class="p-3">
-                {{ firstRegistro(curso)?.nrc ?? '—' }}
+                {{ curso.docente?.nombre ?? '-' }}
               </td>
               <td class="p-3">
-                {{ curso.docente?.nombre ?? '—' }}
-              </td>
-              <td class="p-3">
-                {{ curso.responsable?.name ?? '—' }}
+                {{ curso.responsable?.name ?? '-' }}
               </td>
               <td class="p-3">
                 <div class="w-40">
@@ -481,12 +550,12 @@ function firstRegistro(curso: any) {
                     />
                   </svg>
                 </button>
-                <button
-                  v-if="currentUserRole !== 'docente'"
-                  class="p-1"
-                  title="Editar"
-                  @click="editarCurso(curso.id)"
-                >
+                  <button
+                    v-if="currentUserRole === 'admin'"
+                    class="p-1"
+                    title="Editar"
+                    @click="editarCurso(curso.id)"
+                  >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -498,12 +567,12 @@ function firstRegistro(curso: any) {
                     />
                   </svg>
                 </button>
-                <button
-                  v-if="currentUserRole !== 'docente'"
-                  class="p-1"
-                  title="Eliminar"
-                  @click="eliminarCurso(curso.id)"
-                >
+                  <button
+                    v-if="currentUserRole === 'admin'"
+                    class="p-1"
+                    title="Eliminar"
+                    @click="eliminarCurso(curso.id)"
+                  >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -517,25 +586,24 @@ function firstRegistro(curso: any) {
             </tr>
           </tbody>
         </table>
-
-        <div class="flex items-center justify-between p-3">
-          <div class="text-xs text-muted-foreground">Orden: {{ sort }} {{ dir }}</div>
-          <div class="flex items-center gap-2">
-            <template v-for="l in cursosLinks" :key="l.label">
-              <button
-                v-if="l.url"
-                @click="cambiarPagina(l.url)"
-                :class="['px-2 py-1 rounded border', l.active ? 'bg-primary text-primary-foreground' : '']"
-                v-html="l.label"
-              />
-              <span v-else class="px-2 py-1 text-muted-foreground" v-html="l.label" />
-            </template>
-          </div>
-        </div>
       </div>
 
-      <!-- Vista tarjetas -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+      <div class="flex gap-1 items-center mt-2">
+        <template v-for="l in cursosLinks" :key="l.label">
+          <button
+            v-if="l.url"
+            @click="cambiarPagina(l.url)"
+            :class="['px-2 py-1 rounded border', l.active ? 'bg-primary text-primary-foreground' : '']"
+            v-html="l.label"
+          />
+          <span v-else class="px-2 py-1 text-muted-foreground" v-html="l.label" />
+        </template>
+      </div>
+
+      </div>
+      <div v-else>
+        <!-- Vista tarjetas -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
         <div
           v-for="curso in cursosList"
           :key="curso.id"
@@ -546,16 +614,13 @@ function firstRegistro(curso: any) {
           </div>
           <div class="p-4 flex-1">
             <div class="text-sm text-muted-foreground mb-1">
-              {{ curso.codigo }} · {{ curso.modalidadRel?.nombre ?? curso.modalidad }}
+              {{ curso.codigo }} - {{ curso.modalidad_rel?.nombre ?? '-' }}
             </div>
             <div class="text-sm text-muted-foreground mb-1">
-              Área: {{ curso.modalidadRel?.area?.nombre ?? '—' }}
-            </div>
-            <div class="text-sm text-muted-foreground mb-1">
-              Campus: {{ firstRegistro(curso)?.campus ?? '—' }}
+              Area: {{ curso.modalidad_rel?.area?.nombre ?? 'N/A' }}
             </div>
             <div class="text-sm mb-3">
-              Docente: {{ curso.docente?.nombre ?? '—' }}
+              Docente: {{ curso.docente?.nombre ?? 'N/A' }}
             </div>
             <div class="text-xs mb-1">Avance: {{ curso.avance ?? 0 }}%</div>
             <div class="h-2 bg-muted rounded">
@@ -588,7 +653,7 @@ function firstRegistro(curso: any) {
               </svg>
             </button>
             <button
-              v-if="currentUserRole !== 'docente'"
+              v-if="currentUserRole === 'admin'"
               class="p-1"
               title="Editar"
               @click="editarCurso(curso.id)"
@@ -605,7 +670,7 @@ function firstRegistro(curso: any) {
               </svg>
             </button>
             <button
-              v-if="currentUserRole !== 'docente'"
+              v-if="currentUserRole === 'admin'"
               class="p-1"
               title="Eliminar"
               @click="eliminarCurso(curso.id)"
@@ -622,21 +687,21 @@ function firstRegistro(curso: any) {
           </div>
         </div>
       </div>
-
+      </div>
       <div v-if="cursosSinModalidad.length" class="mt-6">
-        <h2 class="text-lg font-semibold mb-2">Cursos pendientes de área/modalidad</h2>
+        <h2 class="text-lg font-semibold mb-2">Cursos pendientes de Area/modalidad</h2>
         <div class="rounded-lg border divide-y">
           <div v-for="curso in cursosSinModalidad" :key="curso.id" class="p-3 flex items-center justify-between">
             <div class="truncate">
               <div class="font-medium truncate">{{ curso.nombre }}</div>
               <div class="text-xs text-muted-foreground">
-                Docente: {{ curso.docente?.nombre ?? '—' }} · Código: {{ curso.codigo }}
+                Docente: {{ curso.docente?.nombre ?? 'N/A' }} - NRC: {{ curso.codigo }}
               </div>
             </div>
             <div class="flex items-center gap-2">
               <button class="underline" @click="verCurso(curso.id)">Abrir</button>
               <button
-                v-if="currentUserRole !== 'docente'"
+                v-if="currentUserRole === 'admin'"
                 class="underline text-yellow-600"
                 @click="editarCurso(curso.id)"
               >

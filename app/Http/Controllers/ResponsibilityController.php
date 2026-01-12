@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Assignment;
 use App\Models\AssignmentLog;
+use App\Models\Sede;
 use App\Models\Curso;
+use App\Models\Docente;
+use App\Models\PeriodoAcademico;
 use App\Models\User;
 use App\Notifications\NewResponsibleAssigned;
 use Illuminate\Http\RedirectResponse;
@@ -52,11 +55,22 @@ class ResponsibilityController extends Controller
             $query->where('user_id', $user->id);
         }
 
+        if ($user && ! $user->isAdmin() && ! $user->isResponsable() && $user->isDocente()) {
+            $query->whereHas('assignment', function ($q) use ($user) {
+                $q->where('responsable_user_id', $user->id);
+            });
+        }
+
         $cursos = $query->orderBy('nombre')->get();
 
         $docentesResponsables = User::whereIn('role', ['responsable', 'admin'])
             ->orderBy('name')
             ->get(['id', 'name']);
+
+        $docentes = Docente::whereNotNull('user_id')
+            ->orderBy('apellido')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'apellido', 'user_id']);
 
         return Inertia::render('Responsabilidades/Index', [
             'cursos' => $cursos,
@@ -67,16 +81,24 @@ class ResponsibilityController extends Controller
                 'responsable' => $responsableId,
             ],
             'responsables' => $docentesResponsables,
+            'docentes' => $docentes,
+            'periodosCatalog' => PeriodoAcademico::orderByDesc('codigo')->get(['id', 'codigo', 'estado']),
+            'sedesCatalog' => Sede::orderBy('nombre')->get(['id', 'nombre']),
+            'currentUserRole' => $user?->role,
         ]);
     }
 
     public function update(Request $request, Curso $curso): RedirectResponse
     {
+        if (! $request->user()?->isAdmin()) {
+            abort(403);
+        }
+
         $this->authorize('assignResponsible', $curso);
 
         $data = $request->validate([
             'responsable_user_id' => 'required|exists:users,id',
-            'campus_id' => 'nullable|integer',
+            'sede_id' => 'nullable|integer|exists:sedes,id',
             'modalidad_docente' => 'nullable|string|max:100',
             'reason' => 'nullable|string',
         ]);
@@ -88,7 +110,7 @@ class ResponsibilityController extends Controller
 
         $assignment->fill([
             'responsable_user_id' => $toUserId,
-            'campus_id' => $data['campus_id'] ?? null,
+            'sede_id' => $data['sede_id'] ?? null,
             'modalidad_docente' => $data['modalidad_docente'] ?? null,
             'assigned_at' => now(),
             'status' => 'invitado',

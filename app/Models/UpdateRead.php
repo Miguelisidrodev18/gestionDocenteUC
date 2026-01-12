@@ -17,7 +17,7 @@ class UpdateRead extends Model
         'read_at' => 'datetime',
     ];
 
-    public function update(): BelongsTo
+    public function updateItem(): BelongsTo
     {
         return $this->belongsTo(Update::class);
     }
@@ -27,4 +27,3 @@ class UpdateRead extends Model
         return $this->belongsTo(User::class);
     }
 }
-

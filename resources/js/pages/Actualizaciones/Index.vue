@@ -3,9 +3,21 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import type { BreadcrumbItem } from '@/types';
 const page: any = usePage();
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }, { title: 'Actualizaciones', href: '/actualizaciones' }];
 
-const updates = computed(() => page.props.updates ?? []);
+
+const updates = computed(() => {
+  const raw = page.props.updates ?? [];
+  const map = new Map<number, any>();
+  raw.forEach((u: any) => {
+    if (!map.has(u.id)) {
+      map.set(u.id, u);
+    }
+  });
+  return Array.from(map.values());
+});
 const filters = ref(page.props.filters ?? {});
 
 const estado = ref(filters.value.estado ?? 'activas');
@@ -83,8 +95,8 @@ function remove(id: number) {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="p-8 min-h-screen bg-background text-foreground">
+  <AppLayout :breadcrumbs="breadcrumbs">
+<div class="p-8 min-h-screen bg-background text-foreground">
       <h1 class="text-2xl font-bold mb-6 flex items-center justify-between">
         <span>Actualizaciones</span>
         <button

@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Docente;
 use App\Models\Curso;
 use App\Models\RegistroNota;
+use App\Models\Sede;
+use App\Models\Area;
+use App\Models\Modalidad;
+use App\Models\PeriodoAcademico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -66,17 +70,22 @@ class DashboardController extends Controller
             ->get();
 
         $defaultPeriodo = $cursosPorPeriodo->last()->periodo ?? Curso::max('periodo') ?? null;
-        $initialMetrics = $defaultPeriodo ? $this->computeMetrics($defaultPeriodo, null, null) : null;
+        $initialMetrics = $defaultPeriodo ? $this->computeMetrics($defaultPeriodo, null, null, null) : null;
 
         return Inertia::render('Dashboard/Index', [
             'docentesCount' => $docentesCount,
             'cursosCount' => $cursosCount,
             'cursosPorPeriodo' => $cursosPorPeriodo,
+            'periodosCatalog' => PeriodoAcademico::orderByDesc('codigo')->get(['id', 'codigo', 'estado']),
+            'sedesCatalog' => Sede::orderBy('nombre')->get(['id', 'nombre']),
+            'areasCatalog' => Area::orderBy('nombre')->get(['id', 'nombre']),
+            'modalidadesCatalog' => Modalidad::orderBy('nombre')->get(['id', 'nombre', 'area_id']),
             'currentUserRole' => $user?->role,
             'initialFilters' => [
                 'periodo' => $defaultPeriodo,
                 'sede' => null,
-                'responsable_id' => null,
+                'area_id' => null,
+                'modalidad_id' => null,
             ],
             'initialMetrics' => $initialMetrics,
         ]);
@@ -86,24 +95,26 @@ class DashboardController extends Controller
     {
         $periodo = $request->get('periodo');
         $sede = $request->get('sede');
-        $responsableId = $request->get('responsable_id');
+        $areaId = $request->get('area_id');
+        $modalidadId = $request->get('modalidad_id');
 
         if (! $periodo) {
             $periodo = Curso::max('periodo');
         }
 
-        $data = $this->computeMetrics($periodo, $sede, $responsableId);
+        $data = $this->computeMetrics($periodo, $sede, $areaId, $modalidadId);
 
         return response()->json($data);
     }
 
-    protected function computeMetrics(?string $periodo, ?string $sede, ?int $responsableId): array
+    protected function computeMetrics(?string $periodo, ?string $sede, ?string $areaId, ?string $modalidadId): array
     {
         if (! $periodo) {
             return [
                 'periodo' => null,
                 'sede' => $sede,
-                'responsable_id' => $responsableId,
+                'area_id' => $areaId,
+                'modalidad_id' => $modalidadId,
                 'resumen' => null,
                 'top_riesgo' => [],
                 'por_responsable' => [],
@@ -112,24 +123,29 @@ class DashboardController extends Controller
         }
 
         $cacheKey = sprintf(
-            'dashboard_metrics_%s_%s_%s',
+            'dashboard_metrics_%s_%s_%s_%s',
             $periodo,
             $sede ?: 'all',
-            $responsableId ?: 'all',
+            $areaId ?: 'all',
+            $modalidadId ?: 'all',
         );
 
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($periodo, $sede, $responsableId) {
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($periodo, $sede, $areaId, $modalidadId) {
             $cursosQuery = Curso::with(['responsable', 'registroNotas'])
                 ->where('periodo', $periodo);
 
             if ($sede) {
-                $cursosQuery->whereHas('registroNotas', function ($q) use ($sede) {
-                    $q->where('campus', $sede);
+                $cursosQuery->whereHas('sede', function ($q) use ($sede) {
+                    $q->where('nombre', $sede);
                 });
             }
 
-            if ($responsableId) {
-                $cursosQuery->where('user_id', $responsableId);
+            if ($areaId) {
+                $cursosQuery->where('area_id', $areaId);
+            }
+
+            if ($modalidadId) {
+                $cursosQuery->where('modalidad_id', $modalidadId);
             }
 
             $cursos = $cursosQuery->get();
@@ -176,7 +192,21 @@ class DashboardController extends Controller
                 });
 
             if ($sede) {
-                $registrosQuery->where('campus', $sede);
+                $registrosQuery->whereHas('curso.sede', function ($q) use ($sede) {
+                    $q->where('nombre', $sede);
+                });
+            }
+
+            if ($areaId) {
+                $registrosQuery->whereHas('curso', function ($q) use ($areaId) {
+                    $q->where('area_id', $areaId);
+                });
+            }
+
+            if ($modalidadId) {
+                $registrosQuery->whereHas('curso', function ($q) use ($modalidadId) {
+                    $q->where('modalidad_id', $modalidadId);
+                });
             }
 
             $seriesMensuales = $registrosQuery
@@ -194,7 +224,8 @@ class DashboardController extends Controller
             return [
                 'periodo' => $periodo,
                 'sede' => $sede,
-                'responsable_id' => $responsableId,
+                'area_id' => $areaId,
+                'modalidad_id' => $modalidadId,
                 'resumen' => [
                     'total_cursos' => $totalCursos,
                     'avance_promedio' => $avgAvance,

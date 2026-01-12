@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\ProgressService;
+use App\Models\PeriodoAcademico;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,13 +24,21 @@ class Curso extends Model
         'drive_url',
         'user_id',
         'sede_id',
-        'campus_id',
         'area_id',
         'periodo',
         'periodo_id',
         'periodo_academico',
         'avance_cache',
         'review_state',
+        'checklist_manual',
+    ];
+
+    protected $casts = [
+        'checklist_manual' => 'array',
+    ];
+
+    protected $appends = [
+        'avance',
     ];
 
     public function user(): BelongsTo
@@ -65,11 +74,6 @@ class Curso extends Model
     public function sede(): BelongsTo
     {
         return $this->belongsTo(Sede::class);
-    }
-
-    public function campus(): BelongsTo
-    {
-        return $this->belongsTo(Campus::class);
     }
 
     public function areaCatalogo(): BelongsTo
@@ -109,6 +113,9 @@ class Curso extends Model
 
     public function userCanUpload($user): bool
     {
+        if ($this->isPeriodoCerrado()) {
+            return false;
+        }
         if (! $user) return false;
         if ($user->isAdmin()) return true;
         if ($this->user_id === $user->id) return true; // responsable
@@ -116,6 +123,32 @@ class Curso extends Model
         if (! $docenteId) return false;
         if ($this->docente_id === $docenteId) return true; // principal
         return $this->docentesParticipantes()->where('docente_id', $docenteId)->exists();
+    }
+
+    public function isPeriodoCerrado(): bool
+    {
+        return $this->getPeriodoEstado() === 'CERRADO';
+    }
+
+    public function getPeriodoEstado(): ?string
+    {
+        if ($this->relationLoaded('periodoAcademicoRel')) {
+            $estado = $this->periodoAcademicoRel?->estado;
+            if ($estado) {
+                return $estado;
+            }
+        }
+
+        if ($this->periodo_id) {
+            return PeriodoAcademico::whereKey($this->periodo_id)->value('estado');
+        }
+
+        $codigo = $this->periodo_academico ?: $this->periodo;
+        if (! $codigo) {
+            return null;
+        }
+
+        return PeriodoAcademico::where('codigo', $codigo)->value('estado');
     }
 
     public function requerimientos(): array
@@ -171,6 +204,15 @@ class Curso extends Model
 
     public function getAvanceAttribute(): int
     {
+        if (! $this->exists || ! $this->getKey()) {
+            return 0;
+        }
+
+        $manual = $this->checklist_manual;
+        if (is_array($manual) && ! empty($manual)) {
+            return app(ProgressService::class)->recomputeForCourse($this->id);
+        }
+
         $cached = $this->attributes['avance_cache'] ?? null;
         if ($cached !== null) {
             return (int) $cached;

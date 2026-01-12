@@ -77,7 +77,7 @@ class AuthenticatedSessionController extends Controller
 
         // Redirect based on role
         if ($user && method_exists($user, 'isDocente') && $user->isDocente()) {
-            return redirect()->intended(route('docentes.index', absolute: false));
+            return redirect()->intended(route('teachers.index', absolute: false));
         }
 
         if ($user && method_exists($user, 'isResponsable') && $user->isResponsable()) {

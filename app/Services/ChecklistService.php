@@ -3,13 +3,14 @@
 namespace App\Services;
 
 use App\Models\Curso;
+use App\Models\TipoEvidencia;
 
 class ChecklistService
 {
     /**
      * Devuelve el estado de cada ítem del checklist para un curso.
      *
-     * @return array<string,string> keys: actas, guias, presentaciones, trabajos, finales => 'cumplido'|'pendiente'
+     * @return array<string,string> keys: códigos de tipos de evidencia => 'cumplido'|'pendiente'
      */
     public function statusForCourse(int $courseId): array
     {
@@ -42,21 +43,26 @@ class ChecklistService
 
         // Hechos
         $actasDone = (int) $curso->actas->count();
-        $evCounts = $curso->evidencias->groupBy('tipo')->map->count();
+        $evCounts = $curso->evidencias
+            ->where('estado', 'validado')
+            ->groupBy('tipo')
+            ->map->count();
 
         $guiasDone = (int) ($evCounts['guia'] ?? 0);
         $presentDone = (int) ($evCounts['presentacion'] ?? 0);
         $trabajosDone = (int) ($evCounts['trabajo'] ?? 0);
 
-        $items = [];
-        $items['actas'] = ($requiredActas > 0 && $actasDone >= $requiredActas) ? 'cumplido' : 'pendiente';
-        $items['guias'] = ($requiredGuias > 0 && $guiasDone >= $requiredGuias) ? 'cumplido' : 'pendiente';
-        $items['presentaciones'] = ($requiredPresent > 0 && $presentDone >= $requiredPresent) ? 'cumplido' : 'pendiente';
-        $items['trabajos'] = ($requiredTrabajos > 0 && $trabajosDone >= $requiredTrabajos) ? 'cumplido' : 'pendiente';
+        $computed = [];
+        $computed['acta'] = ($requiredActas > 0 && $actasDone >= $requiredActas) ? 'cumplido' : 'pendiente';
+        $computed['guia'] = ($requiredGuias > 0 && $guiasDone >= $requiredGuias) ? 'cumplido' : 'pendiente';
+        $computed['presentacion'] = ($requiredPresent > 0 && $presentDone >= $requiredPresent) ? 'cumplido' : 'pendiente';
+        $computed['trabajo'] = ($requiredTrabajos > 0 && $trabajosDone >= $requiredTrabajos) ? 'cumplido' : 'pendiente';
 
         // Finales
         $finalRequired = 0;
         $finalDone = 0;
+        $hasRegistro = false;
+        $hasInforme = false;
         foreach ($finalesCfg as $key => $req) {
             $req = (int) $req;
             if ($req <= 0) {
@@ -69,10 +75,12 @@ class ChecklistService
                     $has = $actasDone > 0;
                     break;
                 case 'registro':
-                    $has = $curso->registroNotas && $curso->registroNotas->count() > 0;
+                    $hasRegistro = $curso->registroNotas && $curso->registroNotas->count() > 0;
+                    $has = $hasRegistro;
                     break;
                 case 'informe_final':
-                    $has = (bool) $curso->informeFinal;
+                    $hasInforme = (bool) $curso->informeFinal;
+                    $has = $hasInforme;
                     break;
             }
             if ($has) {
@@ -80,9 +88,50 @@ class ChecklistService
             }
         }
 
-        $items['finales'] = ($finalRequired > 0 && $finalDone >= $finalRequired) ? 'cumplido' : 'pendiente';
+        if (($finalesCfg['registro'] ?? 0) > 0) {
+            $computed['registro'] = $hasRegistro ? 'cumplido' : 'pendiente';
+        }
+        if (($finalesCfg['informe_final'] ?? 0) > 0) {
+            $computed['informe_final'] = $hasInforme ? 'cumplido' : 'pendiente';
+        }
+
+        // Status por tipo de evidencia existente en catálogo
+        $items = [];
+        $tipos = TipoEvidencia::orderBy('codigo')->get(['codigo']);
+        foreach ($tipos as $tipo) {
+            $code = (string) $tipo->codigo;
+            $items[$code] = $computed[$code] ?? 'pendiente';
+        }
+
+        $manual = $curso->checklist_manual ?? [];
+        if (is_array($manual) && ! empty($manual)) {
+            $legacyMap = [
+                'actas' => 'acta',
+                'guias' => 'guia',
+                'presentaciones' => 'presentacion',
+                'trabajos' => 'trabajo',
+            ];
+            foreach ($legacyMap as $legacy => $code) {
+                if (isset($manual[$legacy]) && ! isset($manual[$code])) {
+                    $manual[$code] = $manual[$legacy];
+                }
+            }
+            if (isset($manual['finales'])) {
+                if (! isset($manual['registro'])) {
+                    $manual['registro'] = $manual['finales'];
+                }
+                if (! isset($manual['informe_final'])) {
+                    $manual['informe_final'] = $manual['finales'];
+                }
+            }
+
+            foreach ($items as $code => $value) {
+                if (isset($manual[$code]) && in_array($manual[$code], ['cumplido', 'pendiente'], true)) {
+                    $items[$code] = $manual[$code];
+                }
+            }
+        }
 
         return $items;
     }
 }
-

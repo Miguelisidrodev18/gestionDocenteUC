@@ -3,7 +3,10 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import type { BreadcrumbItem } from '@/types';
 const page: any = usePage();
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: '/dashboard' }, { title: 'Asesores y Jurados', href: '/asesores-jurados' }];
+
 const periodo = ref(page.props.periodo ?? '2025-2');
 const filters = ref(page.props.filters ?? { area: '', estado: '' });
 const docentes = computed(() => page.props.docentes ?? []);
@@ -79,8 +82,8 @@ function rechazarInvitacion(id: number) {
 </script>
 
 <template>
-  <AppLayout>
-    <div class="p-8 min-h-screen bg-background text-foreground">
+  <AppLayout :breadcrumbs="breadcrumbs">
+<div class="p-8 min-h-screen bg-background text-foreground">
       <h1 class="text-2xl font-bold mb-6">Asesores y Jurados</h1>
 
       <!-- Filtros -->
