@@ -19,7 +19,13 @@ class UpdatePublished extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['database'];
+
+        if (config('queue.default') !== 'sync') {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -43,4 +49,3 @@ class UpdatePublished extends Notification implements ShouldQueue
         ];
     }
 }
-

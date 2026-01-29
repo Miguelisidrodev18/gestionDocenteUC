@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Update;
 use App\Models\UpdateRead;
-use App\Models\User;
-use App\Notifications\UpdatePublished;
+use App\Jobs\NotifyUpdateAudience;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
 class UpdateController extends Controller
@@ -129,7 +127,7 @@ class UpdateController extends Controller
         ]);
 
         if ($update->isActiveNow() || $update->pinned) {
-            $this->notifyAudience($update);
+            NotifyUpdateAudience::dispatchAfterResponse($update->id);
         }
 
         $this->clearCache();
@@ -155,7 +153,7 @@ class UpdateController extends Controller
         $update->update($data);
 
         if ((! $wasActive && $update->isActiveNow()) || $update->pinned) {
-            $this->notifyAudience($update);
+            NotifyUpdateAudience::dispatchAfterResponse($update->id);
         }
 
         $this->clearCache();
@@ -177,7 +175,7 @@ class UpdateController extends Controller
     {
         $this->authorize('pin', $update);
         $update->update(['pinned' => true]);
-        $this->notifyAudience($update);
+        NotifyUpdateAudience::dispatchAfterResponse($update->id);
         $this->clearCache();
 
         return back()->with('success', 'Actualización fijada');
@@ -228,29 +226,4 @@ class UpdateController extends Controller
         return response()->json(['unread' => $count]);
     }
 
-    protected function notifyAudience(Update $update): void
-    {
-        $query = User::query();
-
-        switch ($update->audience) {
-            case Update::AUDIENCE_DOCENTES:
-                $query->whereHas('docente');
-                break;
-            case Update::AUDIENCE_RESPONSABLES:
-                $query->where('role', 'responsable');
-                break;
-            case Update::AUDIENCE_ADMIN:
-                $query->where('role', 'admin');
-                break;
-            case Update::AUDIENCE_TODOS:
-            default:
-                // sin filtros
-                break;
-        }
-
-        $users = $query->get();
-
-        Notification::send($users, new UpdatePublished($update));
-    }
 }
-

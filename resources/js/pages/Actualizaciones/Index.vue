@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import InputError from '@/components/InputError.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -19,6 +20,7 @@ const updates = computed(() => {
   return Array.from(map.values());
 });
 const filters = ref(page.props.filters ?? {});
+const errors = computed(() => (page.props.errors as Record<string, string>) ?? {});
 
 const estado = ref(filters.value.estado ?? 'activas');
 const audiencia = ref(filters.value.audiencia ?? '');
@@ -27,6 +29,43 @@ const to = ref(filters.value.to ?? '');
 
 const showModal = ref(false);
 const editing = ref<any | null>(null);
+const formState = ref({
+  titulo: '',
+  cuerpo_md: '',
+  audience: 'TODOS',
+  pinned: false,
+  starts_at: '',
+  ends_at: '',
+});
+
+function toLocalDateTime(value?: string | null) {
+  if (!value) {
+    return '';
+  }
+  return value.substring(0, 16);
+}
+
+function resetForm() {
+  formState.value = {
+    titulo: '',
+    cuerpo_md: '',
+    audience: 'TODOS',
+    pinned: false,
+    starts_at: '',
+    ends_at: '',
+  };
+}
+
+function fillForm(update: any) {
+  formState.value = {
+    titulo: update?.titulo ?? '',
+    cuerpo_md: update?.cuerpo_md ?? '',
+    audience: update?.audience ?? 'TODOS',
+    pinned: Boolean(update?.pinned),
+    starts_at: toLocalDateTime(update?.starts_at),
+    ends_at: toLocalDateTime(update?.ends_at),
+  };
+}
 
 function applyFilters() {
   router.get(
@@ -43,23 +82,24 @@ function applyFilters() {
 
 function openCreate() {
   editing.value = null;
+  resetForm();
   showModal.value = true;
 }
 
 function openEdit(u: any) {
   editing.value = u;
+  fillForm(u);
   showModal.value = true;
 }
 
-function submitUpdate(e: Event) {
-  const form = e.target as HTMLFormElement;
+function submitUpdate() {
   const payload = {
-    titulo: (form.titulo as any).value,
-    cuerpo_md: (form.cuerpo_md as any).value,
-    audience: (form.audience as any).value,
-    pinned: (form.pinned as any).checked,
-    starts_at: (form.starts_at as any).value,
-    ends_at: (form.ends_at as any).value || null,
+    titulo: formState.value.titulo,
+    cuerpo_md: formState.value.cuerpo_md,
+    audience: formState.value.audience,
+    pinned: formState.value.pinned,
+    starts_at: formState.value.starts_at,
+    ends_at: formState.value.ends_at || null,
   };
 
   if (editing.value) {
@@ -271,16 +311,17 @@ function remove(id: number) {
             <span>Título</span>
             <input
               name="titulo"
-              :default-value="editing?.titulo || ''"
+              v-model="formState.titulo"
               class="border border-border bg-background text-foreground p-2 rounded"
               required
             />
+            <InputError :message="errors.titulo" />
           </label>
           <label class="flex flex-col gap-1">
             <span>Audiencia</span>
             <select
               name="audience"
-              :default-value="editing?.audience || 'TODOS'"
+              v-model="formState.audience"
               class="border border-border bg-background text-foreground p-2 rounded"
             >
               <option value="TODOS">Todos</option>
@@ -288,6 +329,7 @@ function remove(id: number) {
               <option value="RESPONSABLES">Responsables</option>
               <option value="ADMIN">Admin</option>
             </select>
+            <InputError :message="errors.audience" />
           </label>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <label class="flex flex-col gap-1">
@@ -295,26 +337,28 @@ function remove(id: number) {
               <input
                 name="starts_at"
                 type="datetime-local"
-                :default-value="editing?.starts_at ? editing.starts_at.substring(0, 16) : ''"
+                v-model="formState.starts_at"
                 class="border border-border bg-background text-foreground p-2 rounded"
                 required
               />
+              <InputError :message="errors.starts_at" />
             </label>
             <label class="flex flex-col gap-1">
               <span>Fin</span>
               <input
                 name="ends_at"
                 type="datetime-local"
-                :default-value="editing?.ends_at ? editing.ends_at.substring(0, 16) : ''"
+                v-model="formState.ends_at"
                 class="border border-border bg-background text-foreground p-2 rounded"
               />
+              <InputError :message="errors.ends_at" />
             </label>
             <label class="flex items-center gap-2 mt-5">
               <input
                 name="pinned"
                 type="checkbox"
                 class="border-border"
-                :checked="!!editing?.pinned"
+                v-model="formState.pinned"
               />
               <span>Fijar (pin)</span>
             </label>
@@ -324,10 +368,12 @@ function remove(id: number) {
             <textarea
               name="cuerpo_md"
               rows="6"
-              :default-value="editing?.cuerpo_md || ''"
+              v-model="formState.cuerpo_md"
+              minlength="10"
               class="border border-border bg-background text-foreground p-2 rounded"
               required
             ></textarea>
+            <InputError :message="errors.cuerpo_md" />
           </label>
           <div class="flex justify-end gap-2 mt-3">
             <button

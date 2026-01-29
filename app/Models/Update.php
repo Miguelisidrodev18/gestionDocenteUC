@@ -44,6 +44,10 @@ class Update extends Model
 
     public function scopeVisibleFor($query, User $user)
     {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
         return $query->where(function ($q) use ($user) {
             $q->where('audience', self::AUDIENCE_TODOS);
 
@@ -55,9 +59,6 @@ class Update extends Model
                 $q->orWhere('audience', self::AUDIENCE_RESPONSABLES);
             }
 
-            if ($user->isAdmin()) {
-                $q->orWhere('audience', self::AUDIENCE_ADMIN);
-            }
         });
     }
 
