@@ -1,27 +1,32 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
-# Instalar extensiones de PHP necesarias
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
     libjpeg-dev libfreetype6-dev libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Extensión Redis para PHP
-RUN pecl install redis \
-    && docker-php-ext-enable redis
+# Extensión Redis
+RUN pecl install redis && docker-php-ext-enable redis
 
-# Configuración e instalación de extensiones PHP (incluye intl)
+# Extensiones PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip intl
 
-# Copiamos Composer
+# Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer el directorio de trabajo
+# Directorio de trabajo
 WORKDIR /var/www/html
 
-# Exponer puerto de PHP-FPM
-EXPOSE 9000
+# Copiar proyecto
+COPY . .
 
-# Comando por defecto del contenedor PHP-FPM
-CMD ["php-fpm"]
+# Permisos necesarios
+RUN chmod -R 775 storage bootstrap/cache
+
+# Puerto que Railway usa
+EXPOSE 8080
+
+# Servidor Laravel escuchando el puerto correcto
+CMD php artisan serve --host=0.0.0.0 --port=${PORT}
