@@ -17,8 +17,8 @@ use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return 'Backend OK, auth is the issue 🚦';
-});
+    return redirect()->route('login');
+})->name('home');
 
 // Dashboard (autenticados)
 Route::middleware(['auth', 'verified'])->group(function () {
