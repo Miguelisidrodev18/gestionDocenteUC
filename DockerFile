@@ -1,13 +1,11 @@
 FROM php:8.2-cli
 
-# Instalar dependencias del sistema
+# Dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
     libjpeg-dev libfreetype6-dev libicu-dev \
+    nodejs npm \
     && rm -rf /var/lib/apt/lists/*
-
-# Extensión Redis
-RUN pecl install redis && docker-php-ext-enable redis
 
 # Extensiones PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -16,17 +14,27 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Directorio de trabajo
-WORKDIR /var/www/html
+WORKDIR /app
 
 # Copiar proyecto
 COPY . .
 
-# Permisos necesarios
+# Instalar dependencias PHP
+RUN composer install --no-interaction --prefer-dist --no-dev
+
+# Instalar dependencias JS y compilar assets
+RUN npm install && npm run build
+
+# Crear carpetas necesarias
+RUN mkdir -p storage/framework/sessions \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/logs \
+    bootstrap/cache
+
+# Permisos
 RUN chmod -R 775 storage bootstrap/cache
 
-# Puerto que Railway usa
 EXPOSE 8080
 
-# Servidor Laravel escuchando el puerto correcto
 CMD php artisan serve --host=0.0.0.0 --port=${PORT}
