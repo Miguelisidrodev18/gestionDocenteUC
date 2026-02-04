@@ -20,6 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance']);
 
+        // Trust proxy headers from Railway (HTTPS, X-Forwarded-*, etc.)
+        $middleware->trustProxies(
+            at: ['*'],
+            headers: \Illuminate\Http\Middleware\TrustProxies::HEADERS_CF_IP |
+                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_FOR |
+                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_HOST |
+                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_PROTO,
+        );
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
