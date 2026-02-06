@@ -1,15 +1,8 @@
 <?php
 
-use App\Http\Middleware\EnsureRole;
-use App\Http\Middleware\HandleAppearance;
-use App\Http\Middleware\HandleInertiaRequests;
-use App\Providers\AppServiceProvider;
-use App\Providers\AuthServiceProvider;
-use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,32 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->encryptCookies(except: ['appearance']);
-
-        // Trust proxy headers from Railway (HTTPS, X-Forwarded-*, etc.)
-        $middleware->trustProxies(
-            at: ['*'],
-            headers: \Illuminate\Http\Middleware\TrustProxies::HEADERS_CF_IP |
-                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_FOR |
-                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_HOST |
-                    \Illuminate\Http\Middleware\TrustProxies::HEADERS_X_FORWARDED_PROTO,
-        );
-
-        $middleware->web(append: [
-            HandleAppearance::class,
-            HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
-        ]);
-
-        $middleware->alias([
-            'role' => EnsureRole::class,
-        ]);
+        // Railway usa proxies, confiar en todos
+        $middleware->trustProxies(at: '*');
     })
-    ->withProviders([
-        AppServiceProvider::class,
-        AuthServiceProvider::class,
-        EventServiceProvider::class,
-    ])
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
