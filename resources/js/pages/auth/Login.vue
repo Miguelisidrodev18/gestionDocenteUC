@@ -129,6 +129,12 @@ const submit = () => {
             <TextLink v-if="canResetPassword" :href="route('password.request')" class="text-sm text-slate-500">
                 Olvidaste tu contrasena
             </TextLink>
+            <div class="text-center text-sm text-slate-500">
+    ¿No tienes cuenta?
+    <TextLink :href="route('register')" class="text-[#0b72e7] font-medium">
+        Registrate
+    </TextLink>
+</div>
 
             <div class="relative flex items-center gap-2">
                 <div class="h-px flex-1 bg-slate-200"></div>

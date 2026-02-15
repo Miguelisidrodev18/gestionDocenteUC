@@ -32,10 +32,16 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
+            'master_password' => ['required'],
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
+        if ($request->master_password !== env('MASTER_REGISTER_PASSWORD')) {
+            return back()->withErrors([
+            'master_password' => 'La contraseña maestra es incorrecta.',
+        ]);
+        }       
 
         $user = User::create([
             'name' => $request->name,
@@ -43,7 +49,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             // Todo usuario registrado entra como docente por defecto;
             // el administrador luego puede cambiar el rol si corresponde.
-            'role' => Role::DOCENTE->value,
+            'role' => Role::ADMINISTRADOR->value,
             'email_verified_at' => now(),
         ]);
 
